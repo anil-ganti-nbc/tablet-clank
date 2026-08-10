@@ -1,0 +1,4 @@
+-- Reference migration for Tablet Clank schema version 1.
+-- Runtime application is kept in tablet_clank.storage.db so the zero-dependency
+-- foundation can bootstrap a database without an external migration package.
+-- The schema_migrations table records version 1 after the idempotent bootstrap.

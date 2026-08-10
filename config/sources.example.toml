@@ -1,0 +1,8 @@
+# Informational example only. Runtime authority remains tablet_clank.sources.registry.
+# Production allowlist intentionally remains empty in Stage 1.
+
+[sources.apple_in_sitemap]
+enabled = false
+
+[sources.samsung_us_sitemap]
+enabled = false
