@@ -26,4 +26,6 @@ Repeated carrier/unlocked URLs with the same regional part number are deduplicat
 
 ## Unresolved questions
 
+An Apple Store identity introduced after an existing product with the same base SKU, manufacturer and region is a repair/reconciliation candidate, not automatically an editorial new-product event. The current pipeline records this narrow case as `identity_correction`; a genuinely new base SKU remains `new_product`.
+
 Real-world cross-region examples have not yet been audited. Before source promotion, determine whether region should remain in identity or become an observation dimension, how marketing aliases map to model numbers, and whether RAM/storage should define a variant entity separate from the canonical product.

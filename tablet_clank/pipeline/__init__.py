@@ -24,7 +24,12 @@ def process(db, collector, fixture_mode=False):
                 db.conn.execute("INSERT INTO products(manufacturer,family,name,model_number,sku,region,variant,connectivity,ram_gb,storage_gb,colour,processor,display_size_in,os,identity_key,first_seen,last_seen) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (product.manufacturer,product.family,product.name,product.model_number,product.sku,product.region,product.variant,product.connectivity,product.ram_gb,product.storage_gb,product.colour,product.processor,product.display_size_in,product.os,product.identity_key,product.observed_at,product.observed_at))
                 pid=db.conn.execute("SELECT id FROM products WHERE identity_key=?", (product.identity_key,)).fetchone()[0]
                 result.new_count += 1
-                if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,new_value,evidence_url,observed_at,confidence) VALUES (?,?,?,?,?,?,?)", (pid,source.id,"new_product",product.name,product.url,product.observed_at,.85))
+                event_type = "new_product"
+                if source.id in ("apple_us_ipad_pro_store", "apple_in_ipad_pro_store") and product.sku:
+                    repaired = db.conn.execute("SELECT 1 FROM products WHERE id<>? AND manufacturer=? AND region=? AND sku=? LIMIT 1", (pid, product.manufacturer, product.region, product.sku)).fetchone()
+                    if repaired:
+                        event_type = "identity_correction"
+                if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,new_value,evidence_url,observed_at,confidence) VALUES (?,?,?,?,?,?,?)", (pid,source.id,event_type,product.name,product.url,product.observed_at,.85))
             else:
                 pid=row["id"]; result.resighted_count += 1
                 changed=[]

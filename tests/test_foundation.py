@@ -68,3 +68,27 @@ def test_failure_is_recorded_and_does_not_raise(tmp_path):
         source=SOURCES["apple_in_sitemap"]
         def collect(self): raise RuntimeError("blocked")
     result=process(db,Bad()); assert result.status=="failed" and "blocked" in result.error
+
+def test_apple_identity_repair_is_not_new_product_event(tmp_path):
+    db=Database(tmp_path/"x.db"); s=SOURCES["apple_us_ipad_pro_store"]
+    class Sequence:
+        source=s
+        def __init__(self): self.calls=0
+        def collect(self):
+            self.calls += 1
+            connectivity = "Wi-Fi" if self.calls == 1 else "Wi-Fi + Cellular"
+            from tablet_clank.models import Candidate
+            return [Candidate(s.id,"Apple","US","https://www.apple.com/us/shop/buy-ipad/ipad-pro/x","iPad Pro","TESTLL/A", {"family":"iPad Pro","sku":"TEST","storage":"256GB","display":"11-inch","colour":"Silver","connectivity":connectivity})]
+    collector=Sequence(); first=process(db,collector); second=process(db,collector)
+    assert first.status=="success" and second.status=="success"
+    assert db.conn.execute("select event_type from change_events").fetchone()[0]=="identity_correction"
+
+def test_apple_new_sku_remains_new_product_event(tmp_path):
+    db=Database(tmp_path/"x.db"); s=SOURCES["apple_us_ipad_pro_store"]
+    from tablet_clank.models import Candidate
+    class One:
+        source=s
+        def __init__(self, sku): self.sku=sku
+        def collect(self): return [Candidate(s.id,"Apple","US","https://www.apple.com/us/shop/buy-ipad/ipad-pro/x","iPad Pro",self.sku+"LL/A", {"family":"iPad Pro","sku":self.sku,"storage":"256GB","display":"11-inch","connectivity":"Wi-Fi"})]
+    process(db,One("FIRST")); process(db,One("SECOND"))
+    assert db.conn.execute("select count(*) from change_events where event_type='new_product'").fetchone()[0]==1
