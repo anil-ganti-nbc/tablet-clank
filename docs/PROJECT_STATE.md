@@ -2,13 +2,13 @@ PROJECT
 Tablet Clank
 
 PHASE
-Stage 1 foundation / continuity checkpoint
+Stage 1 controlled live validation checkpoint
 
 PRODUCTION
 Allowlist empty; scheduling absent; alerts disabled
 
 DATABASE
-var/tablet_clank.db; integrity ok; 21 products, 23 observations, 2 runs, 349 rejected candidates, 0 events
+var/tablet_clank.db; integrity ok; 25 products, 76 observations, 7 runs, 1420 rejected candidates, 0 events; 0 duplicate identity keys
 
 SCHEMA
 1
@@ -17,20 +17,20 @@ TESTS
 python -m pytest -q -rA; passed=4 failed=0 skipped=0 xfailed=0
 
 SOURCES
-apple_in_sitemap=EXPERIMENTAL, one plausible live run, baseline complete
-samsung_us_sitemap=EXPERIMENTAL, fixture valid, live HTTP 404, no baseline
+apple_in_sitemap=EXPERIMENTAL, 2 mechanically stable but low-quality live resight runs, post-fix run failed closed 372/0/372/0; DB baseline flag historical but not trusted
+samsung_us_sitemap=EXPERIMENTAL, official XML replacement live, run 3 4/4/0/4 then run 4 4/3/1/3 resight; baseline complete
 
 KNOWN_GOOD
-Fixture parsing, conservative validation, normalization helpers, SQLite bootstrap/integrity, baseline/resighting semantics, failure recording
+Fixture parsing, XML sitemap parsing, conservative validation, normalization helpers, SQLite bootstrap/integrity, Samsung resighting, failure recording, Apple fail-closed behavior
 
 KNOWN_BROKEN
-Samsung configured live endpoint returns HTTP 404
+Apple regional HTML sitemap does not provide stable product identifiers and is not a trustworthy product source; historical false-positive observations remain retained
 
 UNVERIFIED
-Repeated live stability, production safety, cross-region identity behavior, source-specific parsing quality
+Better Apple product-discovery surface, production safety, cross-region identity behavior, repeated Samsung stability beyond one resight cycle
 
 NEXT_ACTION
-Re-research Samsung’s regional source URL and then repeat controlled live validation for both experimental sources
+Research one better official Apple product-discovery surface; keep both current sources experimental and do not promote or expand scope
 
 STOP_CONDITIONS
 Do not promote sources, enable production/alerts, expand OEM scope, scrape retailers, or refactor speculatively. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.

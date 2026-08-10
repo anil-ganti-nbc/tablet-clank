@@ -7,6 +7,7 @@ from ..collectors.html_catalogue import HtmlCatalogueCollector
 def process(db, collector, fixture_mode=False):
     source = collector.source; result = RunResult(source.id); started = utcnow()
     db.conn.execute("INSERT OR IGNORE INTO sources(id,manufacturer,region,kind,url,state) VALUES (?,?,?,?,?,?)", (source.id,source.manufacturer,source.region,source.kind,source.url,source.state))
+    db.conn.execute("UPDATE sources SET manufacturer=?, region=?, kind=?, url=?, state=? WHERE id=?", (source.manufacturer,source.region,source.kind,source.url,source.state,source.id))
     cur = db.conn.execute("INSERT INTO collector_runs(source_id,started_at,status) VALUES (?,?,?)", (source.id,started,"running")); result.run_id=cur.lastrowid
     try:
         candidates = collector.collect(); result.raw_count=len(candidates)

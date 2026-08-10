@@ -6,7 +6,7 @@ Tablet Clank is an independent, evidence-first system for discovering meaningful
 
 ## Current Project State
 
-Foundation/Stage 1 is implemented. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; current checkpoint is `de921b4`.
+Foundation/Stage 1 live validation is in progress. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; validation started from Git HEAD `31a637c`.
 
 ## Repository / Environment
 
@@ -24,12 +24,12 @@ Implemented modules are documented in `docs/ARCHITECTURE.md`. There is no schedu
 
 ## Database
 
-The canonical database currently has integrity `ok`, 2 sources, 21 products, 23 observations, 2 collector runs, 349 rejected candidates, and 0 change events. Apple has a completed baseline; Samsung has no baseline. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
+The canonical database currently has integrity `ok`, 2 sources, 25 products, 76 observations, 7 collector runs, 1420 rejected candidates, and 0 change events. SQLite baseline flags are set for both sources, but the Apple flag is historical and untrusted because its accepted set was false-positive navigation material. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
 
 ## Implemented Sources
 
-- `apple_in_sitemap`: Apple, IN, regional HTML sitemap, experimental. Live probe succeeded with 372 raw links and 23 accepted candidates; one live cycle only, so not trusted for production.
-- `samsung_us_sitemap`: Samsung, US, regional HTML sitemap, experimental. Fixture parsing works; configured live URL returned HTTP 404. No baseline.
+- `apple_in_sitemap`: Apple, IN, regional HTML sitemap, experimental. Two pre-audit runs mechanically resighted 23/23 identities; after the stable-identifier audit fix, run 7 failed closed with 372 raw, 0 accepted and 372 rejected.
+- `samsung_us_sitemap`: Samsung, US, official regional XML product sitemap at `https://www.samsung.com/us/top_sitemap.xml`, experimental. Run 3 accepted 4 URLs including one generic category; run 4 accepted/resighted 3 genuine model-code URLs and rejected the category.
 
 Full source truth is in `docs/SOURCE_INVENTORY.md`. Broader reconnaissance is in `docs/SOURCE_RESEARCH.md`.
 
@@ -43,8 +43,8 @@ Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 4 passed, 0
 
 ## Known Issues
 
-- Samsung’s configured live sitemap endpoint returns HTTP 404 and needs re-research before another live attempt.
-- Apple’s navigation sitemap contains substantial non-tablet material; rejection metrics make this visible, but source-specific filtering and repeated live validation are still needed.
+- Apple’s navigation sitemap contains substantial non-tablet material. After a narrow stable-identifier rule, live runs fail closed with zero accepted candidates; the historical Apple baseline is not trusted.
+- Samsung’s old HTML sitemap URL was replaced by the official XML `https://www.samsung.com/us/top_sitemap.xml`; one mixed generic category was rejected after the first replacement run.
 - The canonical identity key is conservative and has not been audited against real cross-region variant examples.
 - There is no real virtual environment captured in the repository; create one locally when needed.
 
@@ -59,15 +59,15 @@ Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 4 passed, 0
 
 ## Current Work
 
-Continuity checkpoint only. No feature-development work is authorized by this handoff.
+Controlled Stage 1 live validation only. No broader feature-development work is authorized by this handoff.
 
 ## Next Recommended Step
 
-Re-research the Samsung regional source URL, then perform controlled repeated live validation for both existing experimental sources. Update source state only after evidence supports it.
+Do not promote either source. The next action is to review the documented live-validation evidence and decide whether to research a better Apple product-discovery surface; keep both sources experimental.
 
 ## Do Not Do Yet
 
-Do not add manufacturers, expand regions, promote sources, enable production or alerts, scrape retailers, add AI, build a dashboard, or perform speculative architecture refactors.
+Do not add manufacturers, expand regions, promote sources, enable production or alerts, scrape retailers, add AI, build a dashboard, or perform speculative architecture refactors. Do not delete historical false-positive evidence.
 
 ## Essential Commands
 

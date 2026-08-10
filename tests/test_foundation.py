@@ -1,7 +1,9 @@
 from tablet_clank.collectors.html_catalogue import HtmlCatalogueCollector
+from tablet_clank.collectors.xml_sitemap import XmlSitemapCollector
 from tablet_clank.sources.registry import SOURCES
 from tablet_clank.validation import validate
 from tablet_clank.normalization import parse_ram,parse_storage,canonical_url
+from tablet_clank.models import Candidate
 from tablet_clank.storage.db import Database
 from tablet_clank.pipeline import process
 
@@ -13,8 +15,18 @@ def test_fixture_parsing_and_validation():
 def test_normalization_helpers():
     assert parse_ram("8 GB")==8; assert parse_storage("1TB")==1024; assert canonical_url("HTTPS://EXAMPLE.COM/a/?x=1")=="https://example.com/a"
 
+def test_xml_sitemap_parsing():
+    candidates=XmlSitemapCollector(SOURCES["samsung_us_sitemap"],True).collect()
+    assert len(candidates)==3
+    assert candidates[0].source_identifier=="SM-X930"
+    assert sum(validate(c)[0] for c in candidates)==2
+
+def test_apple_navigation_without_identifier_is_rejected():
+    candidate=Candidate("apple_in_sitemap","Apple","IN","https://www.apple.com/in/ipad-pro","iPad Pro")
+    assert validate(candidate)==(False,"no_stable_product_identifier")
+
 def test_baseline_then_resight(tmp_path):
-    db=Database(tmp_path/"x.db"); s=SOURCES["samsung_us_sitemap"]; c=HtmlCatalogueCollector(s,True)
+    db=Database(tmp_path/"x.db"); s=SOURCES["samsung_us_sitemap"]; c=XmlSitemapCollector(s,True)
     first=process(db,c); second=process(db,c)
     assert first.status=="success" and first.new_count==2
     assert second.status=="success" and second.new_count==0 and second.resighted_count==2

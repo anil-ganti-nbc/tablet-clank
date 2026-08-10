@@ -1,5 +1,6 @@
 import argparse
 from .collectors.html_catalogue import HtmlCatalogueCollector
+from .collectors.xml_sitemap import XmlSitemapCollector
 from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST
 from .storage.db import Database
 from .pipeline import process
@@ -15,7 +16,9 @@ def main(argv=None):
         ids=list(SOURCES) if args.all else [args.source]
         for sid in ids:
             if sid not in SOURCES: parser.error(f"unknown source: {sid}")
-            s=SOURCES[sid]; result=process(db,HtmlCatalogueCollector(s,fixture_mode=not args.live),fixture_mode=not args.live)
+            s=SOURCES[sid]
+            collector_class = XmlSitemapCollector if "XML" in s.kind else HtmlCatalogueCollector
+            result=process(db,collector_class(s,fixture_mode=not args.live),fixture_mode=not args.live)
             print(result)
     elif args.command=="db-integrity": print(db.integrity())
     elif args.command in ("health","status"):

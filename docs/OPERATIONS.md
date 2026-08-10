@@ -52,4 +52,4 @@ Schema version is read from `schema_migrations`; the current migration reference
 
 ## Current live caveat
 
-Apple’s live navigation sitemap returned 372 raw links and 23 accepted candidates in one run. Samsung’s configured URL returned HTTP 404. Neither source is production validated.
+Apple’s live navigation sitemap returned 372 raw links but, after the identifier-quality fix, 0 accepted candidates and failed closed. Samsung’s replacement XML sitemap returned 4 raw URLs, 3 accepted product candidates and 1 rejected generic category URL, then resighted the 3 accepted identities. Neither source is production validated.
