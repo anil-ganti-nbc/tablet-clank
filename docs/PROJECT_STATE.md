@@ -8,29 +8,31 @@ PRODUCTION
 Allowlist empty; scheduling absent; alerts disabled
 
 DATABASE
-var/tablet_clank.db; integrity ok; 25 products, 76 observations, 7 runs, 1420 rejected candidates, 0 events; 0 duplicate identity keys
+var/tablet_clank.db; integrity ok; 169 products, 412 observations, 13 runs, 1420 rejected candidates, 48 events; 0 duplicate identity keys
 
 SCHEMA
 1
 
 TESTS
-python -m pytest -q -rA; passed=6 failed=0 skipped=0 xfailed=0
+python -m pytest -q -rA; passed=10 failed=0 skipped=0 xfailed=0
 
 SOURCES
-apple_in_sitemap=EXPERIMENTAL, 2 mechanically stable but low-quality live resight runs, post-fix run failed closed 372/0/372/0; DB baseline flag historical but not trusted
-samsung_us_sitemap=EXPERIMENTAL, official XML replacement live, run 3 4/4/0/4 then run 4 4/3/1/3 resight; baseline complete
+apple_in_sitemap=EXPERIMENTAL, post-fix run failed closed 372/0/372/0; historical baseline untrusted
+apple_us_ipad_pro_store=EXPERIMENTAL, corrected run 12 48/48/0/48, 0 new, 48 resighted; early duplicate-part-number evidence retained
+apple_in_ipad_pro_store=EXPERIMENTAL, corrected run 13 48/48/0/48, 0 new, 48 resighted; early correction evidence retained
+samsung_us_sitemap=EXPERIMENTAL, official XML replacement live, run 3 4/4/0/4 then run 4 4/3/1/3 resight; unchanged
 
 KNOWN_GOOD
-Fixture parsing, XML sitemap parsing, conservative validation, normalization helpers, SQLite bootstrap/integrity, Samsung resighting, failure recording, Apple fail-closed behavior
+Fixture parsing, Apple Store structured configuration parsing, regional SKU extraction, carrier deduplication, corrected US/IN resighting, XML sitemap parsing, conservative validation, SQLite integrity, failure recording
 
 KNOWN_BROKEN
-Apple regional HTML sitemap does not provide stable product identifiers and is not a trustworthy product source; historical false-positive observations remain retained
+Apple Store early runs created retained correction events before the duplicate-part-number fix; Apple regional HTML sitemap remains untrustworthy; Store-SKU to A-number mapping is unresolved
 
 UNVERIFIED
-Apple Store parser behavior, SKU-to-A-model mapping, production safety, cross-region identity behavior, repeated Samsung stability beyond one resight cycle
+Long-term Apple Store markup stability, SKU-to-A-model mapping, production safety, global canonical unification, additional Samsung stability
 
 NEXT_ACTION
-Implement a fixture-backed narrow probe/collector for Apple Store Buy iPad family pages, starting with US and IN iPad Pro configuration data; keep it experimental
+Review the Apple Store correction evidence and decide whether to keep the two experimental Store sources for longer repeated live monitoring; do not promote them
 
 STOP_CONDITIONS
 Do not promote sources, enable production/alerts, expand OEM scope, scrape retailers, or refactor speculatively. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.

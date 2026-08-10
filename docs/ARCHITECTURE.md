@@ -6,10 +6,11 @@
 
 ### Source and collection
 
-- `tablet_clank/sources/registry.py` defines the two registered sources and the empty production allowlist.
+- `tablet_clank/sources/registry.py` defines the four registered experimental sources and the empty production allowlist.
 - `tablet_clank/collectors/base.py` retrieves HTML/XML with timeout, user agent, status and content-type checks.
 - `tablet_clank/collectors/html_catalogue.py` parses HTML anchor links and metadata for Apple.
 - `tablet_clank/collectors/xml_sitemap.py` parses standard XML `<loc>` entries, filters Samsung tablet paths and extracts `SM-*` identifiers from URL slugs.
+- `tablet_clank/collectors/apple_store.py` parses the embedded Apple Store `products` configuration array plus matching iPad Pro configuration links, then deduplicates repeated carrier/unlocked URLs by regional part number while preferring the non-carrier representation.
 - Fixture mode supports offline tests.
 
 ### Validation and normalization
@@ -27,7 +28,7 @@
 
 ## Validation caveat
 
-The historical Apple baseline contains false-positive navigation-like records from the first live run. They were not deleted because evidence is retained; current validation now rejects the same identifier-free candidates and fails closed at zero accepted candidates. Samsung’s first replacement run likewise retained one historical generic category observation; later runs reject that category.
+The historical Apple sitemap baseline contains false-positive navigation-like records from the first live run. They were not deleted because evidence is retained; current validation now rejects the same identifier-free candidates and fails closed at zero accepted candidates. Samsung’s first replacement run likewise retained one historical generic category observation; later runs reject that category. Apple Store runs 8–9 preceded the duplicate-part-number fix; their evidence and resulting correction events remain retained, while runs 12–13 prove the corrected parser resights cleanly.
 
 ## Explicitly not implemented
 

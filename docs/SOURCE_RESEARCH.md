@@ -21,6 +21,8 @@ The Apple Store family selector pages are the best candidate. They are official,
 
 Expected coverage is current purchasable/marketed Store configurations rather than the complete historical Apple catalogue. The main limitations are large embedded HTML/serialized state, possible Store markup changes, no proven public JSON endpoint, and uncertainty about how reliably SKU-to-A-model mapping can be joined. The Store pages may also represent sellable configurations rather than separate hardware models.
 
+The experimental implementation confirmed the key risk: the US page exposes repeated carrier/unlocked URLs for one part number. The corrected parser deduplicates by regional part number and prefers the non-carrier representation; it also maps Apple’s `wificell` value to Wi-Fi + Cellular. After correction, both US and IN produced 48 accepted configurations and then 48 resighted configurations. The first pre-correction runs and their 48 correction events remain retained as evidence.
+
 ### Failed approaches preserved
 
 - The regional sitemap was tested first and proved too navigation-heavy; stable product identity could not be defended from its accepted-looking links.

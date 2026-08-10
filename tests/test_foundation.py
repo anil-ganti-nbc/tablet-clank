@@ -1,5 +1,6 @@
 from tablet_clank.collectors.html_catalogue import HtmlCatalogueCollector
 from tablet_clank.collectors.xml_sitemap import XmlSitemapCollector
+from tablet_clank.collectors.apple_store import AppleStoreIPadProCollector
 from tablet_clank.sources.registry import SOURCES
 from tablet_clank.validation import validate
 from tablet_clank.normalization import parse_ram,parse_storage,canonical_url
@@ -24,6 +25,34 @@ def test_xml_sitemap_parsing():
 def test_apple_navigation_without_identifier_is_rejected():
     candidate=Candidate("apple_in_sitemap","Apple","IN","https://www.apple.com/in/ipad-pro","iPad Pro")
     assert validate(candidate)==(False,"no_stable_product_identifier")
+
+def test_apple_store_us_fixture_parsing():
+    candidates=AppleStoreIPadProCollector(SOURCES["apple_us_ipad_pro_store"],True).collect()
+    assert len(candidates)==3
+    assert candidates[0].source_identifier=="MDWK4LL/A"
+    assert candidates[0].raw_values["display"]=="11-inch"
+    assert candidates[0].raw_values["storage"]=="256 GB"
+    assert candidates[0].raw_values["connectivity"]=="Wi-Fi"
+    assert candidates[1].raw_values["connectivity"]=="Wi-Fi + Cellular"
+    assert all(validate(candidate)[0] for candidate in candidates)
+
+def test_apple_store_deduplicates_carrier_representations():
+    candidates=AppleStoreIPadProCollector(SOURCES["apple_us_ipad_pro_store"],True).collect()
+    assert len(candidates)==3
+    assert candidates[1].raw_values["connectivity"]=="Wi-Fi + Cellular"
+
+def test_apple_store_india_fixture_has_regional_part_numbers():
+    candidates=AppleStoreIPadProCollector(SOURCES["apple_in_ipad_pro_store"],True).collect()
+    assert len(candidates)==3
+    assert all(candidate.source_identifier.endswith("HN/A") for candidate in candidates)
+    assert len({candidate.source_identifier for candidate in candidates})==3
+
+def test_apple_store_rejects_non_family_links():
+    source=SOURCES["apple_us_ipad_pro_store"]
+    class BadStoreCollector(AppleStoreIPadProCollector):
+        def fetch(self):
+            return '<script type="application/json">{"products":[{"partNumber":"X/A","basePartNumber":"X","dimensionCapacity":"256gb","dimensionScreensize":"11inch","dimensionConnection":"wifi","dimensionColor":"spaceblack"}]}</script><a href="/us/shop/buy-ipad/ipad-pro/11-inch-display-256gb-space-black-wifi-standard-glass-unlocked">iPad Pro</a><a href="/us/shop/buy-ipad/apple-pencil">Apple Pencil</a>'
+    assert len(BadStoreCollector(source,False).collect())==1
 
 def test_baseline_then_resight(tmp_path):
     db=Database(tmp_path/"x.db"); s=SOURCES["samsung_us_sitemap"]; c=XmlSitemapCollector(s,True)

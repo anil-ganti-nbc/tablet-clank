@@ -29,6 +29,8 @@ Canonical tests are fixture-only and do not require internet access.
 ```text
 python -m tablet_clank.cli sources
 python -m tablet_clank.cli collect apple_in_sitemap
+python -m tablet_clank.cli collect apple_us_ipad_pro_store
+python -m tablet_clank.cli collect apple_in_ipad_pro_store
 python -m tablet_clank.cli collect samsung_us_sitemap
 python -m tablet_clank.cli collect --all
 ```
@@ -37,6 +39,8 @@ These commands use offline fixtures. Controlled live runs require the explicit f
 
 ```text
 python -m tablet_clank.cli collect apple_in_sitemap --live
+python -m tablet_clank.cli collect apple_us_ipad_pro_store --live
+python -m tablet_clank.cli collect apple_in_ipad_pro_store --live
 python -m tablet_clank.cli collect samsung_us_sitemap --live
 ```
 
@@ -52,4 +56,4 @@ Schema version is read from `schema_migrations`; the current migration reference
 
 ## Current live caveat
 
-Apple’s live navigation sitemap returned 372 raw links but, after the identifier-quality fix, 0 accepted candidates and failed closed. Samsung’s replacement XML sitemap returned 4 raw URLs, 3 accepted product candidates and 1 rejected generic category URL, then resighted the 3 accepted identities. Neither source is production validated.
+Apple’s live navigation sitemap returned 372 raw links but, after the identifier-quality fix, 0 accepted candidates and failed closed. Corrected Apple Store runs for both US and IN returned 48 raw/validated/accepted configurations and then 48 resighted configurations. Samsung’s replacement XML sitemap returned 4 raw URLs, 3 accepted product candidates and 1 rejected generic category URL, then resighted the 3 accepted identities. No source is production validated.

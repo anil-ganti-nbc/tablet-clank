@@ -18,6 +18,12 @@ Model number is preferred, then manufacturer SKU. The fallback is intentionally 
 - Colour: retained as evidence/product data but does not split the current identity key.
 - Store SKU: retained as `sku` and used only when a model number is unavailable.
 
+## Apple Store iPad Pro experimental rule
+
+For the experimental Apple Store sources, the regional Apple `partNumber` (for example `MDWK4LL/A` or `MDWK4HN/A`) is used as the stable source identifier/model-number field. The base part number is retained as `sku`. It is treated as a sellable Store configuration identity, not a global hardware identity. Storage, display size and connectivity are parsed as configuration evidence; colour is retained but does not independently split identity unless Apple assigns a different part number.
+
+Repeated carrier/unlocked URLs with the same regional part number are deduplicated at collection time, preferring the non-carrier representation. Regional part numbers are suitable as regional variant/observation identifiers, not yet as global canonical product identifiers. Direct Store-SKU to Apple `A####` mapping remains UNRESOLVED and is not inferred.
+
 ## Unresolved questions
 
 Real-world cross-region examples have not yet been audited. Before source promotion, determine whether region should remain in identity or become an observation dimension, how marketing aliases map to model numbers, and whether RAM/storage should define a variant entity separate from the canonical product.
