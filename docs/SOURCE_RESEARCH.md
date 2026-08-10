@@ -1,22 +1,37 @@
 # Source research
 
-Research was performed against official first-party surfaces on 2026-08-10 and 2026-08-11. No browser automation or third-party sources were used.
+Research was performed against official first-party surfaces on 2026-08-10 through 2026-08-11. No browser automation, third-party sources, access-control bypasses or collector implementation were used in this reconnaissance pass.
 
-## Samsung US re-research
+## Apple reconnaissance
 
-| URL | HTTP behaviour | Structure/usefulness | Decision |
-|---|---|---|---|
-| `https://www.samsung.com/us/sitemap/` | HTTP 404 in the original configured run | Not usable as configured | Rejected; old source URL retained only in historical run 2 |
-| `https://www.samsung.com/us/common/sitemap/` | HTTP 200, HTML | Official navigation directory; contains Galaxy Tab links but is broad and noisy | Rejected as primary collector because the XML sitemap is more machine-readable |
-| `https://www.samsung.com/us/common/sitemap.html` | HTTP 200, redirects/canonicalizes to `/us/common/sitemap/` | Same HTML directory | Rejected in favor of XML |
-| `https://www.samsung.com/us/sitemap.xml` | HTTP 200, XML sitemap index | Lists official child indexes including `top_sitemap.xml` | Useful index, but not direct tablet product collection |
-| `https://www.samsung.com/us/top_sitemap.xml` | HTTP 200, XML URL set; current probe exposed four `/us/mobile/tablets/` URLs | Machine-readable official product URLs with model-code-bearing slugs such as `SM-T837VZKAVZW` and `SM-T830NZKLXAR`; one generic `/all-tablets/` URL is mixed in | **Chosen** as `samsung_us_sitemap` replacement |
-| `https://www.samsung.com/us/tablets/` | HTTP 200, HTML catalogue landing page | Strong tablet context and current family navigation, but product details are partly page/JS-oriented | Useful corroborating surface; not selected for the Stage 1 collector |
+| Official surface | Region | HTTP/structure probe | Identity and discovery assessment | Decision |
+|---|---|---|---|---|
+| `https://www.apple.com/in/sitemap/` | IN | HTTP 200 HTML; 372 links in the existing live probe | Navigation-oriented. Tablet-looking links were categories, services, accessories or marketing pages; no stable product identifiers in accepted-looking links. | UNSUITABLE as a product collector |
+| `https://www.apple.com/in/ipad/` | IN | HTTP 200 HTML, approximately 840 KB; product tiles and `productId` references present | Current lineup landing page, but its product tiles are family/category presentation rather than individual SKU/model inventory. | MARGINAL for corroboration only |
+| `https://www.apple.com/us/shop/buy-ipad` | US | HTTP 200 HTML, approximately 526 KB; embedded serialized data includes 35 regional `baseIdentifier` values, 16 `partNumber` values and links to four family selectors | Official Store catalogue entry point. It exposes current families and regional Store identifiers, but the landing page alone is not configuration-complete. | PROMISING entry point |
+| `https://www.apple.com/in/shop/buy-ipad` | IN | HTTP 200 HTML, approximately 417 KB; embedded data includes 31 regional `baseIdentifier` values and 12 `partNumber` values | Same Store infrastructure with India-specific SKU suffixes and availability. | PROMISING regional counterpart |
+| `https://www.apple.com/us/shop/buy-ipad/ipad-pro` | US | HTTP 200 HTML, approximately 2.16 MB; 96 SKU entries and 96 individual configuration links observed | Individual configuration paths expose screen size, capacity, colour, Wi-Fi/cellular and glass options. Embedded data includes stable Apple SKU/part numbers such as `MDWK4LL/A`; configuration names include current model generation such as iPad Pro M5. | **PROMISING best discovery candidate** |
+| `https://www.apple.com/in/shop/buy-ipad/ipad-pro` | IN | HTTP 200 HTML, approximately 2.15 MB; 48 configuration links observed; regional SKUs such as `MDWK4HN/A` | Demonstrates regional configuration and identity differences on the same Store family surface. | PROMISING regional validation candidate |
+| `https://support.apple.com/en-in/108043` | IN | HTTP 200 HTML, approximately 1.24 MB; 142 distinct `A####` model identifiers observed | Strong canonical identity/reference surface: model names, year, capacities, Wi-Fi/Wi-Fi + Cellular distinctions and technical-specification references. It describes the known model universe, but is not an early product-publication feed. | PROMISING complement, not primary discovery |
+| `https://support.apple.com/ipad` | Global/US support | HTTP 200 HTML | Generic support landing page; useful navigation to model identification, not an individual-product source. | MARGINAL |
 
-The chosen XML sitemap is defensible for discovery because it is first-party, stable enough to retrieve, machine-readable, and exposes model identifiers in product URL slugs. The collector filters to `/us/mobile/tablets/`, then the generic validator rejects `/all-tablets/` category URLs. The first replacement run showed 4 raw URLs; after the narrow category fix, 3 were accepted and 1 rejected.
+### Best candidate decision: PROMISING
+
+The Apple Store family selector pages are the best candidate. They are official, machine-readable enough for a narrow parser, expose individual configuration links, preserve regional Store identity through SKU/part number values, and distinguish meaningful variants such as capacity, colour and Wi-Fi/cellular. The current probes did not expose Apple hardware `A####` model numbers on Store pages; the Support model-identification page can provide a complementary A-model mapping later.
+
+Expected coverage is current purchasable/marketed Store configurations rather than the complete historical Apple catalogue. The main limitations are large embedded HTML/serialized state, possible Store markup changes, no proven public JSON endpoint, and uncertainty about how reliably SKU-to-A-model mapping can be joined. The Store pages may also represent sellable configurations rather than separate hardware models.
+
+### Failed approaches preserved
+
+- The regional sitemap was tested first and proved too navigation-heavy; stable product identity could not be defended from its accepted-looking links.
+- The generic iPad landing page exposes product-family presentation but not a complete individual configuration inventory.
+- No standalone public Apple Store JSON/catalogue endpoint was confirmed during lightweight probing. Do not invent an endpoint from embedded page state.
+- Apple Support model identification is valuable for identity enrichment, but its purpose and structure suggest reference/backfill rather than timely discovery.
+
+## Samsung US research
+
+Samsung research remains documented for continuity. The old `/us/sitemap/` returned 404. The official `https://www.samsung.com/us/top_sitemap.xml` replacement is already implemented and experimentally validated; it is outside this Apple-only reconnaissance scope and was not modified.
 
 ## Other research
 
-Initial targets were Apple, Lenovo, Xiaomi, OnePlus, Google, Huawei, Honor, RedMagic, Asus, Acer and TCL. Apple’s regional HTML sitemap is easy to retrieve but is navigation-oriented. The live audit showed its tablet-looking links were categories, services, support or navigation pages without stable product identifiers; it is not currently a trustworthy product collector. Other manufacturers remain RESEARCH only.
-
-Search results alone are not treated as evidence or a source registry. No credentials, cookies, retailer scraping or external alerting were introduced.
+Lenovo, Xiaomi, OnePlus, Google, Huawei, Honor, RedMagic, Asus, Acer and TCL remain RESEARCH only. Search results alone are not treated as evidence or a source registry.

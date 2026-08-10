@@ -6,7 +6,7 @@ Tablet Clank is an independent, evidence-first system for discovering meaningful
 
 ## Current Project State
 
-Foundation/Stage 1 live validation is in progress. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; validation started from Git HEAD `31a637c`.
+Foundation/Stage 1 Apple source reconnaissance is complete. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; this reconnaissance started from Git HEAD `4eb51a9`.
 
 ## Repository / Environment
 
@@ -39,11 +39,12 @@ Production allowlist is empty. Production scheduling is absent. Alerts are disab
 
 ## Test State
 
-Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 4 passed, 0 failed, 0 skipped, 0 xfailed.
+Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 6 passed, 0 failed, 0 skipped, 0 xfailed.
 
 ## Known Issues
 
 - Apple’s navigation sitemap contains substantial non-tablet material. After a narrow stable-identifier rule, live runs fail closed with zero accepted candidates; the historical Apple baseline is not trusted.
+- Apple Store Buy iPad family pages are a research-only PROMISING candidate: they expose current regional SKUs/part numbers and configuration links, but no collector or fixture exists yet.
 - Samsung’s old HTML sitemap URL was replaced by the official XML `https://www.samsung.com/us/top_sitemap.xml`; one mixed generic category was rejected after the first replacement run.
 - The canonical identity key is conservative and has not been audited against real cross-region variant examples.
 - There is no real virtual environment captured in the repository; create one locally when needed.
@@ -63,7 +64,7 @@ Controlled Stage 1 live validation only. No broader feature-development work is 
 
 ## Next Recommended Step
 
-Do not promote either source. The next action is to review the documented live-validation evidence and decide whether to research a better Apple product-discovery surface; keep both sources experimental.
+Do not promote either source. The next action is a narrow fixture-backed implementation probe for Apple Store Buy iPad family pages; keep it experimental.
 
 ## Do Not Do Yet
 
