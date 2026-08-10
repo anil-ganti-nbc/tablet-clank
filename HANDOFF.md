@@ -6,7 +6,7 @@ Tablet Clank is an independent, evidence-first system for discovering meaningful
 
 ## Current Project State
 
-Foundation/Stage 1 is implemented. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; current checkpoint is `cbcc10f` plus this continuity checkpoint when committed.
+Foundation/Stage 1 is implemented. The repository is the authoritative project state. No next feature phase has started. Current Git branch is `master`; current checkpoint is `de921b4`.
 
 ## Repository / Environment
 
