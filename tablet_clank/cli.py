@@ -4,7 +4,7 @@ from .collectors.xml_sitemap import XmlSitemapCollector
 from .collectors.apple_store import AppleStoreIPadProCollector
 from .collectors.honor_cn import HonorCNTabletsCollector
 from .collectors.tcl_global import TCLGlobalTabletsCollector
-from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST
+from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST, runtime_source_ids
 from .storage.db import Database
 from .pipeline import process
 
@@ -14,12 +14,15 @@ def main(argv=None):
     sub.add_parser("sources"); sub.add_parser("health"); sub.add_parser("status"); sub.add_parser("db-integrity")
     args=parser.parse_args(argv); db=Database()
     if args.command=="sources":
-        for s in SOURCES.values(): print(f"{s.id}\t{s.manufacturer}\t{s.region}\t{s.state}\t{'production' if s.id in PRODUCTION_ALLOWLIST else 'experimental'}")
+        for s in SOURCES.values():
+            membership = "production" if s.id in PRODUCTION_ALLOWLIST else ("experimental" if s.state == "EXPERIMENTAL" else "disabled")
+            print(f"{s.id}\t{s.manufacturer}\t{s.region}\t{s.state}\t{membership}")
     elif args.command=="collect":
-        ids=list(SOURCES) if args.all else [args.source]
+        ids=list(runtime_source_ids()) if args.all else [args.source]
         for sid in ids:
             if sid not in SOURCES: parser.error(f"unknown source: {sid}")
             s=SOURCES[sid]
+            if s.state != "EXPERIMENTAL": parser.error(f"source is disabled: {sid}")
             if s.manufacturer == "Honor":
                 collector_class = HonorCNTabletsCollector
             elif s.manufacturer == "TCL":

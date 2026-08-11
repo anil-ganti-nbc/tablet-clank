@@ -4,11 +4,10 @@ Audit date: 2026-08-11. This document is a design review only; no soak runner or
 
 ## Frozen roster
 
-The frozen experimental roster contains 7 runtime sources across four OEMs:
+The frozen soak roster contains 6 enabled experimental sources across four OEMs. `apple_in_sitemap` remains inspectable historical source metadata but is disabled and excluded from runtime selection.
 
 | Source | OEM / region | Collector | Baseline | Latest state | Readiness |
 |---|---|---|---|---|---|
-| `apple_in_sitemap` | Apple / IN | `HtmlCatalogueCollector` | Historical flag exists but is untrusted | Latest run 7 failed closed: 0 accepted | `SOAK_BLOCKED` |
 | `apple_us_ipad_pro_store` | Apple / US | `AppleStoreIPadProCollector` | Complete | Run 14: 48 accepted/resighted | `READY` |
 | `apple_in_ipad_pro_store` | Apple / IN | `AppleStoreIPadProCollector` | Complete | Run 15: 48 accepted/resighted | `READY` |
 | `samsung_us_sitemap` | Samsung / US | `XmlSitemapCollector` | Complete | Run 4: 3 accepted/resighted | `READY` |
@@ -16,13 +15,13 @@ The frozen experimental roster contains 7 runtime sources across four OEMs:
 | `honor_cn_tablets_comparison` | Honor / CN | `HonorCNTabletsCollector` | Complete | Run 19: 24 accepted/resighted | `READY` |
 | `tcl_global_tablets` | TCL / GLOBAL | `TCLGlobalTabletsCollector` | Complete | Run 21: 24 accepted/resighted | `READY` |
 
-The Apple sitemap is not silently included in soak scope: its latest run correctly failed closed because the source is navigation/category material after the stable-identifier correction. It must be explicitly removed from soak scope or replaced before a runner is implemented.
+The Apple sitemap is retired from runtime with state `DISABLED`. Its source record, products, observations, rejected candidates, runs and events remain historical evidence. The registry’s single runtime rule selects only sources with state `EXPERIMENTAL`, making accidental soak inclusion impossible.
 
 ## Current protections
 
 - HTTP status/content-type and retrieval errors: `PASS` through the shared collector fetch path.
 - Zero-result protection: `PASS`; zero accepted candidates fail the run and do not advance health.
-- Major-collapse protection: `PARTIAL`; Honor and TCL have source-specific minimum/anchor guards, while Apple Store and Samsung rely on zero-result and filtering protections. No current gap permits mass disappearance events because disappearance detection is not implemented.
+- Major-collapse protection: `PARTIAL`; Honor and TCL have source-specific minimum/anchor guards, while Apple Store and Samsung rely on zero-result and filtering protections. This is safe enough for bounded experimental soak because disappearance detection is not implemented and failed/empty runs do not advance health or emit disappearance events.
 - Baseline false-success protection: `PASS` for new baselines; a baseline is completed only after accepted candidates. Historical Apple sitemap state remains explicitly untrusted.
 - No-silent-drop protection: `PASS`; missing candidates do not create disappearance state or events.
 - Source failure isolation: `PASS`; each collector result is recorded independently and a failed source does not abort processing of other sources.
@@ -36,7 +35,7 @@ The database contains 48 historical Apple `identity_correction` events and no Ho
 
 Use one deterministic process per cycle, with fixed source order and no concurrency. The future manual command should run one cycle explicitly; the bounded soak command should run a finite number of cycles and then stop. Each cycle should continue after an individual source failure and finish as `SUCCESS`, `PARTIAL_FAILURE`, or `FAILED` according to source outcomes.
 
-Recommended order: Apple Store US, Apple Store IN, Samsung US, Honor catalogue, Honor comparison, TCL. Do not include `apple_in_sitemap` until its soak status is resolved.
+Recommended order: Apple Store US, Apple Store IN, Samsung US, Honor catalogue, Honor comparison, TCL.
 
 Recommended cadence is one cycle every two hours. This is slow enough to observe longitudinal drift without aggressive polling and is appropriate for experimental first-party catalogue monitoring.
 
@@ -54,7 +53,7 @@ Implement the smallest cross-platform lock around a cycle: an exclusive lock fil
 
 ## Success criteria
 
-Require 12 consecutive two-hour cycles for the healthy soak roster after the Apple sitemap decision is resolved. Every cycle must preserve database integrity, have no duplicate identities, no false `new_product` events, no silent-drop regression, no unhandled source crash, isolated failures, and stable baseline/resight behaviour. Successful soak completion must produce a review report; it must not modify the production allowlist or enable alerts.
+Require 12 consecutive two-hour cycles for the six-source healthy soak roster. Every cycle must preserve database integrity, have no duplicate identities, no false `new_product` events, no silent-drop regression, no unhandled source crash, isolated failures, and stable baseline/resight behaviour. Successful soak completion must produce a review report; it must not modify the production allowlist or enable alerts.
 
 ## Promotion policy
 
@@ -62,4 +61,4 @@ Promotion is a separate human-reviewed phase. Soak completion never automaticall
 
 ## Readiness verdict
 
-`SOAK_BLOCKED_SOURCE_HEALTH` because `apple_in_sitemap` is currently registered but its latest run failed closed and its historical baseline is untrusted. No soak execution should begin until that source is explicitly resolved.
+`READY_TO_IMPLEMENT_SOAK`. The six enabled sources are healthy enough for bounded experimental soak; the retired Apple sitemap is excluded by the registry selection rule.

@@ -38,7 +38,7 @@ The historical Apple sitemap baseline contains false-positive navigation-like re
 
 PLANNED: scheduler, repeated-healthy-run disappearance semantics, source-specific Apple product discovery, external alert delivery, editorial scoring, dashboard, AI classification, historical backfill and production deployment.
 
-Pre-soak review is recorded in `docs/SOAK_READINESS.md`. No soak runner exists. The future runner must execute sources serially under one cross-platform cycle lock, isolate source failures, and write only bounded cycle summaries using existing collector-run/source-state/observation/event tables. The current roster is blocked from soak execution until `apple_in_sitemap` is explicitly resolved.
+Pre-soak review is recorded in `docs/SOAK_READINESS.md`. No soak runner exists. The future runner must execute the six enabled experimental sources serially under one cross-platform cycle lock, isolate source failures, and write only bounded cycle summaries using existing collector-run/source-state/observation/event tables. The retired `apple_in_sitemap` source remains inspectable but is excluded by the registry’s `state == "EXPERIMENTAL"` selection rule.
 
 Lenovo PSREF is currently `OFFLINE_PROBE` only. The reduced fixture and parser contract do not establish a source, baseline, live ingestion path, database rows, or Lenovo event semantics.
 

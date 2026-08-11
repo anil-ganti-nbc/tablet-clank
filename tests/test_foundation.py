@@ -230,3 +230,18 @@ def test_tcl_global_catalogue_preserves_slugs_and_rejects_contamination():
     ]
     assert len({c.source_identifier for c in candidates}) == 8
     assert all(c.manufacturer == "TCL" and c.region == "GLOBAL" for c in candidates)
+
+def test_disabled_source_remains_inspectable_but_is_not_runtime_selectable():
+    from tablet_clank.sources.registry import get_source, runtime_source_ids
+    retired = get_source("apple_in_sitemap")
+    assert retired.state == "DISABLED"
+    assert retired.url == "https://www.apple.com/in/sitemap/"
+    assert "apple_in_sitemap" not in runtime_source_ids()
+
+def test_healthy_experimental_sources_remain_runtime_selectable():
+    from tablet_clank.sources.registry import runtime_source_ids
+    selected = set(runtime_source_ids())
+    assert selected == {
+        "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
+        "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+    }

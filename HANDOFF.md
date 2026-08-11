@@ -24,11 +24,11 @@ Implemented modules are documented in `docs/ARCHITECTURE.md`. There is no schedu
 
 ## Database
 
-The canonical database currently has integrity `ok`, 7 experimental sources, 225 products, 668 observations, 21 collector runs, 1420 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN); Honor and TCL baselines/resights emitted no events. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
+The canonical database currently has integrity `ok`, 6 enabled experimental sources plus 1 retired historical source, 225 products, 668 observations, 21 collector runs, 1420 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN); Honor and TCL baselines/resights emitted no events. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
 
 ## Implemented Sources
 
-- `apple_in_sitemap`: Apple, IN, regional HTML sitemap, experimental. Two pre-audit runs mechanically resighted 23/23 identities; after the stable-identifier audit fix, run 7 failed closed with 372 raw, 0 accepted and 372 rejected.
+- `apple_in_sitemap`: Apple, IN, regional HTML sitemap, retired/disabled. Two pre-audit runs mechanically resighted 23/23 identities; after the stable-identifier audit fix, run 7 failed closed with 372 raw, 0 accepted and 372 rejected. Historical source/products/observations/events remain retained.
 - `apple_us_ipad_pro_store`: Apple, US, experimental Store configuration collector. Run 14 produced 48 raw/validated/accepted configurations, 0 new, 48 resighted.
 - `apple_in_ipad_pro_store`: Apple, IN, experimental Store configuration collector. Run 15 produced 48 raw/validated/accepted configurations, 0 new, 48 resighted.
 - `samsung_us_sitemap`: Samsung, US, official regional XML product sitemap at `https://www.samsung.com/us/top_sitemap.xml`, experimental. Run 3 accepted 4 URLs including one generic category; run 4 accepted/resighted 3 genuine model-code URLs and rejected the category.
@@ -44,7 +44,7 @@ Production allowlist is empty. Production scheduling is absent. Alerts are disab
 
 ## Test State
 
-Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 24 passed, 0 failed, 0 skipped, 0 xfailed.
+Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 26 passed, 0 failed, 0 skipped, 0 xfailed.
 
 ## Known Issues
 
@@ -73,13 +73,13 @@ Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 24 passed, 
 
 ## Current Work
 
-Controlled Stage 1 live validation only. No broader feature-development work is authorized by this handoff.
+Pre-soak roster is frozen. Implement the bounded soak runner next; do not start execution or promotion in this phase.
 
 ## Next Recommended Step
 
-Resolve the SOAK_BLOCKED status of `apple_in_sitemap` before implementing the bounded experimental soak runner.
+Implement the bounded experimental soak runner for the frozen six-source roster.
 
-Honor and TCL expansion gates completed. The current experimental roster is 7 sources across Apple, Samsung, Honor and TCL; `apple_in_sitemap` is SOAK_BLOCKED because its latest run failed closed and its historical baseline is untrusted. Production remains empty and alerts remain disabled.
+Honor and TCL expansion gates completed. The current soak roster is 6 enabled sources across Apple, Samsung, Honor and TCL; `apple_in_sitemap` is retired/disabled with all historical evidence retained. Production remains empty and alerts remain disabled.
 
 ## Do Not Do Yet
 
@@ -90,10 +90,8 @@ Do not add manufacturers, expand regions, promote sources, enable production or 
 ```text
 python -m pytest -q -rA
 python -m tablet_clank.cli sources
-python -m tablet_clank.cli collect apple_in_sitemap
 python -m tablet_clank.cli collect samsung_us_sitemap
 python -m tablet_clank.cli collect --all
-python -m tablet_clank.cli collect apple_in_sitemap --live
 python -m tablet_clank.cli status
 python -m tablet_clank.cli health
 python -m tablet_clank.cli db-integrity

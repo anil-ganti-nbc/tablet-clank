@@ -2,7 +2,7 @@ PROJECT
 Tablet Clank
 
 PHASE
-Stage 1 controlled live validation checkpoint
+Pre-soak roster frozen; soak runner not implemented
 
 PRODUCTION
 Allowlist empty; scheduling absent; alerts disabled
@@ -14,10 +14,10 @@ SCHEMA
 1
 
 TESTS
-python -m pytest -q -rA; passed=24 failed=0 skipped=0 xfailed=0
+python -m pytest -q -rA; passed=26 failed=0 skipped=0 xfailed=0
 
 SOURCES
-apple_in_sitemap=EXPERIMENTAL, post-fix run failed closed 372/0/372/0; historical baseline untrusted
+apple_in_sitemap=DISABLED/RETIRED, post-fix run failed closed 372/0/372/0; historical baseline untrusted; excluded from runtime/soak
 apple_us_ipad_pro_store=EXPERIMENTAL, run 14 48/48/0/48, 0 new, 48 resighted; 24 historical identity_correction events
 apple_in_ipad_pro_store=EXPERIMENTAL, run 15 48/48/0/48, 0 new, 48 resighted; 24 historical identity_correction events
 samsung_us_sitemap=EXPERIMENTAL, official XML replacement live, run 3 4/4/0/4 then run 4 4/3/1/3 resight; unchanged
@@ -29,7 +29,7 @@ KNOWN_GOOD
 Fixture parsing, offline Lenovo PSREF reduced-fixture parsing, exact PSREF identifier preservation, PSREF regional separation, WLAN/WWAN distinction, Apple Store structured configuration parsing, regional SKU extraction, carrier deduplication, corrected US/IN resighting, XML sitemap parsing, conservative validation, SQLite integrity, failure recording
 
 KNOWN_BROKEN
-Apple regional HTML sitemap remains untrustworthy; Store-SKU to A-number mapping is unresolved; early Apple Store identity repairs remain historical evidence; Lenovo PSREF live model-table retrieval is not reliable through safe non-browser requests
+Apple regional HTML sitemap is retired from runtime after failing closed; Store-SKU to A-number mapping is unresolved; early Apple Store identity repairs remain historical evidence; Lenovo PSREF live model-table retrieval is not reliable through safe non-browser requests
 
 XIAOMI_RESEARCH
 China Mi Mall tablet catalogue/detail pages remain a discovery lead, but the requested IDs 10050031 and 19509 currently resolve to unrelated products on direct official inspection. Offline mismatch fixtures fail closed; numeric product ID and variant identity are unproven. Xiaomi runtime source, products, observations, runs and baseline are absent.
@@ -50,7 +50,7 @@ UNVERIFIED
 Long-term Apple Store markup stability, SKU-to-A-model mapping, production safety, global canonical unification, additional Samsung stability
 
 NEXT_ACTION
-Resolve the SOAK_BLOCKED status of apple_in_sitemap before implementing the bounded experimental soak runner
+Implement the bounded experimental soak runner for the frozen six-source roster.
 
 STOP_CONDITIONS
 Do not promote sources, enable production/alerts, expand OEM scope, scrape retailers, or refactor speculatively. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.

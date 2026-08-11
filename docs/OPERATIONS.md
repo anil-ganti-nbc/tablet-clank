@@ -32,7 +32,6 @@ The Legion cross-check also remains offline-only. Do not attempt live Lenovo col
 
 ```text
 python -m tablet_clank.cli sources
-python -m tablet_clank.cli collect apple_in_sitemap
 python -m tablet_clank.cli collect apple_us_ipad_pro_store
 python -m tablet_clank.cli collect apple_in_ipad_pro_store
 python -m tablet_clank.cli collect samsung_us_sitemap
@@ -45,7 +44,6 @@ python -m tablet_clank.cli collect --all
 These commands use offline fixtures. Controlled live runs require the explicit flag:
 
 ```text
-python -m tablet_clank.cli collect apple_in_sitemap --live
 python -m tablet_clank.cli collect apple_us_ipad_pro_store --live
 python -m tablet_clank.cli collect apple_in_ipad_pro_store --live
 python -m tablet_clank.cli collect samsung_us_sitemap --live
@@ -72,4 +70,4 @@ The Xiaomi Mi Mall Pad 7/Pad 8 probe is offline-only. Its current fixtures inten
 
 ## Pre-soak readiness
 
-The frozen roster and conceptual soak model are documented in `docs/SOAK_READINESS.md`. No soak execution is enabled. The next action is to resolve the `SOAK_BLOCKED` status of `apple_in_sitemap`; only then may a bounded serial soak runner be implemented. Production allowlisting and alerts remain disabled.
+The frozen six-source roster and conceptual soak model are documented in `docs/SOAK_READINESS.md`. No soak execution is enabled. `apple_in_sitemap` is retired and disabled; it remains historical evidence but cannot be selected by runtime collection. The next action is to implement the bounded serial soak runner. Production allowlisting and alerts remain disabled.

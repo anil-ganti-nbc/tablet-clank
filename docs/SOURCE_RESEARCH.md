@@ -368,3 +368,9 @@ Queue outcomes:
 - Vivo/iQOO — **NO_USEFUL_SOURCE**. Vivo’s tested product URL returned 404 and iQOO’s product page had no tablet signal. Reopen only after confirming a meaningful current tablet portfolio and public index.
 
 No browser automation, private API, access-control bypass, retailer scraping, or speculative source registration was used.
+
+## Apple regional sitemap retirement (2026-08-11)
+
+`apple_in_sitemap` was the original Apple discovery experiment. Its pre-fix runs mechanically accepted 23 navigation/category/service-like identities and resighted them, but the stable-identifier correction demonstrated that the source did not expose a defensible individual-tablet identity signal: the post-fix live run returned 372 raw links, 0 accepted candidates and 372 rejected candidates. The historical products, observations, rejected candidates, runs and 48 Apple correction events remain preserved in the canonical database.
+
+The source has no unique practical runtime capability that is unavailable from the working Apple US/IN Store iPad Pro configuration sources. It is therefore **RETIRED_FROM_RUNTIME**, represented by registry state `DISABLED`, and excluded from the runtime/soak selection rule (`state == EXPERIMENTAL`). This is a runtime retirement, not historical data deletion or reinterpretation.
