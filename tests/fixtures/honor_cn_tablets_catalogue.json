@@ -1,0 +1,14 @@
+{
+  "fixture_version": 1,
+  "capture_date": "2026-08-11",
+  "source_url": "https://www.honor.com/cn/tablets/",
+  "surface": "catalogue",
+  "entries": [
+    {"entry_type": "product", "category": "tablet", "name": "荣耀平板MagicPad3", "slug": "honor-magicpad-3", "url": "https://www.honor.com/cn/tablets/honor-magicpad-3/", "family": "MagicPad", "grouping_source": "MagicPad系列"},
+    {"entry_type": "product", "category": "tablet", "name": "荣耀平板MagicPad 2", "slug": "honor-magicpad-2", "url": "https://www.honor.com/cn/tablets/honor-magicpad-2/", "family": "MagicPad", "grouping_source": "MagicPad系列"},
+    {"entry_type": "product", "category": "tablet", "name": "荣耀平板V9", "slug": "honor-pad-v9", "url": "https://www.honor.com/cn/tablets/honor-pad-v9/", "family": "Pad V", "grouping_source": "V系列"},
+    {"entry_type": "accessory", "category": "accessory", "name": "荣耀Magic Pencil 4s", "slug": "honor-magic-pencil-4s", "url": "https://www.honor.com/cn/accessories/magic-pencil-4s/"},
+    {"entry_type": "product", "category": "phone", "name": "荣耀Magic8 Pro", "slug": "honor-magic8-pro", "url": "https://www.honor.com/cn/phones/honor-magic8-pro/"},
+    {"entry_type": "category", "category": "tablet", "name": "更多产品", "slug": "more-products", "url": "https://www.honor.com/cn/tablets/more/"}
+  ]
+}

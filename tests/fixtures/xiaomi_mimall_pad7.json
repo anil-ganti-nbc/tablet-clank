@@ -1,0 +1,21 @@
+{
+  "fixture_version": 1,
+  "capture_date": "2026-08-11",
+  "source_url": "https://www.mi.com/shop/buy/detail?product_id=10050031",
+  "expected_product_name": "Xiaomi Pad 7",
+  "requested_product_id": "10050031",
+  "region": "CN",
+  "status": "identity_mismatch",
+  "observed_title": "米家智能欧式吸油烟机S2",
+  "observed_category": "home_appliance",
+  "raw_values": {
+    "ram": null,
+    "storage": null,
+    "colour": null,
+    "connectivity": null,
+    "display": null,
+    "processor": null,
+    "variant_id": null,
+    "evidence": "Current public page title is unrelated to the requested tablet."
+  }
+}

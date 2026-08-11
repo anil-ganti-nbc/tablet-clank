@@ -1,0 +1,21 @@
+{
+  "fixture_version": 1,
+  "capture_date": "2026-08-11",
+  "source_url": "https://www.mi.com/shop/buy/detail?product_id=19509",
+  "expected_product_name": "Xiaomi Pad 8",
+  "requested_product_id": "19509",
+  "region": "CN",
+  "status": "identity_mismatch",
+  "observed_title": "米家双核净水器1200G Pro",
+  "observed_category": "home_appliance",
+  "raw_values": {
+    "ram": null,
+    "storage": null,
+    "colour": null,
+    "connectivity": null,
+    "display": null,
+    "processor": null,
+    "variant_id": null,
+    "evidence": "Current public page title is unrelated to the requested tablet."
+  }
+}

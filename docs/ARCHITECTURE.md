@@ -11,6 +11,9 @@
 - `tablet_clank/collectors/html_catalogue.py` parses HTML anchor links and metadata for Apple.
 - `tablet_clank/collectors/xml_sitemap.py` parses standard XML `<loc>` entries, filters Samsung tablet paths and extracts `SM-*` identifiers from URL slugs.
 - `tablet_clank/collectors/apple_store.py` parses the embedded Apple Store `products` configuration array plus matching iPad Pro configuration links, then deduplicates repeated carrier/unlocked URLs by regional part number while preferring the non-carrier representation.
+- `tablet_clank/collectors/lenovo_psref.py` is an offline-only PSREF fixture parser contract. It is not registered, has no network access, and converts reduced JSON rows into existing `Candidate` objects while preserving exact model codes and collapsing only exact duplicate rows within the fixture snapshot.
+- `tablet_clank/collectors/honor_cn.py` is the source-specific Honor China HTML catalogue/comparison collector. It preserves exact regional slugs, collapses duplicate anchors, and fails closed on a sharply reduced live set or missing known anchors.
+- `tablet_clank/collectors/tcl_global.py` is the source-specific TCL global HTML catalogue collector. It preserves exact product-path slugs and fails closed on a sharply reduced live set or missing known anchors.
 - Fixture mode supports offline tests.
 
 ### Validation and normalization
@@ -34,3 +37,11 @@ The historical Apple sitemap baseline contains false-positive navigation-like re
 ## Explicitly not implemented
 
 PLANNED: scheduler, repeated-healthy-run disappearance semantics, source-specific Apple product discovery, external alert delivery, editorial scoring, dashboard, AI classification, historical backfill and production deployment.
+
+Pre-soak review is recorded in `docs/SOAK_READINESS.md`. No soak runner exists. The future runner must execute sources serially under one cross-platform cycle lock, isolate source failures, and write only bounded cycle summaries using existing collector-run/source-state/observation/event tables. The current roster is blocked from soak execution until `apple_in_sitemap` is explicitly resolved.
+
+Lenovo PSREF is currently `OFFLINE_PROBE` only. The reduced fixture and parser contract do not establish a source, baseline, live ingestion path, database rows, or Lenovo event semantics.
+
+The independent Legion cross-check passed, but no live Lenovo collector was added because the public PSREF model-table retrieval was not reliable through safe non-browser requests. The architecture therefore remains unchanged and Lenovo remains outside the runtime registry.
+
+`tablet_clank/collectors/xiaomi_mimall.py` is an offline-only identity probe. It preserves requested China Mi Mall product IDs and rejects captured page-identity mismatches; it is not registered and emits no candidates for the current fixtures.

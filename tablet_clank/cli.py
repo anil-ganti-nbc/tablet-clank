@@ -2,6 +2,8 @@ import argparse
 from .collectors.html_catalogue import HtmlCatalogueCollector
 from .collectors.xml_sitemap import XmlSitemapCollector
 from .collectors.apple_store import AppleStoreIPadProCollector
+from .collectors.honor_cn import HonorCNTabletsCollector
+from .collectors.tcl_global import TCLGlobalTabletsCollector
 from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST
 from .storage.db import Database
 from .pipeline import process
@@ -18,7 +20,11 @@ def main(argv=None):
         for sid in ids:
             if sid not in SOURCES: parser.error(f"unknown source: {sid}")
             s=SOURCES[sid]
-            if "Apple Store" in s.kind:
+            if s.manufacturer == "Honor":
+                collector_class = HonorCNTabletsCollector
+            elif s.manufacturer == "TCL":
+                collector_class = TCLGlobalTabletsCollector
+            elif "Apple Store" in s.kind:
                 collector_class = AppleStoreIPadProCollector
             else:
                 collector_class = XmlSitemapCollector if "XML" in s.kind else HtmlCatalogueCollector

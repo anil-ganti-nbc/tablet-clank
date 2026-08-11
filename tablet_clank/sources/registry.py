@@ -11,6 +11,9 @@ SOURCES = {
  "apple_us_ipad_pro_store": Source("apple_us_ipad_pro_store", "Apple", "US", "Apple Store iPad Pro configuration page", "https://www.apple.com/us/shop/buy-ipad/ipad-pro", "EXPERIMENTAL", str(ROOT / "tests/fixtures/apple_store_us_ipad_pro.html")),
  "apple_in_ipad_pro_store": Source("apple_in_ipad_pro_store", "Apple", "IN", "Apple Store iPad Pro configuration page", "https://www.apple.com/in/shop/buy-ipad/ipad-pro", "EXPERIMENTAL", str(ROOT / "tests/fixtures/apple_store_in_ipad_pro.html")),
  "samsung_us_sitemap": Source("samsung_us_sitemap", "Samsung", "US", "regional XML product sitemap", "https://www.samsung.com/us/top_sitemap.xml", "EXPERIMENTAL", str(ROOT / "tests/fixtures/samsung_sitemap.xml")),
+ "honor_cn_tablets_catalogue": Source("honor_cn_tablets_catalogue", "Honor", "CN", "Honor China tablet catalogue", "https://www.honor.com/cn/tablets/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_cn_tablets_catalogue.json")),
+ "honor_cn_tablets_comparison": Source("honor_cn_tablets_comparison", "Honor", "CN", "Honor China tablet comparison", "https://www.honor.com/cn/tablets/comparison/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_cn_tablets_comparison.json")),
+ "tcl_global_tablets": Source("tcl_global_tablets", "TCL", "GLOBAL", "TCL global tablet catalogue", "https://www.tcl.com/global/en/tablets", "EXPERIMENTAL", str(ROOT / "tests/fixtures/tcl_global_tablets.html")),
 }
 PRODUCTION_ALLOWLIST: tuple[str, ...] = ()
 
