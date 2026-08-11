@@ -50,6 +50,15 @@ python -m tablet_clank.cli collect samsung_us_sitemap --live
 python -m tablet_clank.cli collect honor_cn_tablets_catalogue --live
 python -m tablet_clank.cli collect honor_cn_tablets_comparison --live
 python -m tablet_clank.cli collect tcl_global_tablets --live
+
+## Bounded experimental soak
+
+```text
+python -m tablet_clank.cli soak --check
+python -m tablet_clank.cli soak --cycles 12 --interval-seconds 7200
+```
+
+The runner is serial, bounded and locked against overlapping manual collection. It writes reports to `var/logs/soak.jsonl`, stops on database-integrity or duplicate-identity failure, isolates source failures, and never sends alerts or promotes sources. Full operating semantics are documented in `docs/SOAK_OPERATIONS.md`.
 ```
 
 ## Health and database
@@ -70,4 +79,4 @@ The Xiaomi Mi Mall Pad 7/Pad 8 probe is offline-only. Its current fixtures inten
 
 ## Pre-soak readiness
 
-The frozen six-source roster and conceptual soak model are documented in `docs/SOAK_READINESS.md`. No soak execution is enabled. `apple_in_sitemap` is retired and disabled; it remains historical evidence but cannot be selected by runtime collection. The next action is to implement the bounded serial soak runner. Production allowlisting and alerts remain disabled.
+The frozen six-source roster and conceptual soak model are documented in `docs/SOAK_READINESS.md`. No 12-cycle soak execution is enabled. `apple_in_sitemap` is retired and disabled; it remains historical evidence but cannot be selected by runtime collection. Production allowlisting and alerts remain disabled.

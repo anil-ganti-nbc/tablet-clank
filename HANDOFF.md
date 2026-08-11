@@ -24,7 +24,7 @@ Implemented modules are documented in `docs/ARCHITECTURE.md`. There is no schedu
 
 ## Database
 
-The canonical database currently has integrity `ok`, 6 enabled experimental sources plus 1 retired historical source, 225 products, 668 observations, 21 collector runs, 1420 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN); Honor and TCL baselines/resights emitted no events. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
+The canonical database currently has integrity `ok`, 6 enabled experimental sources plus 1 retired historical source, 225 products, 847 observations, 27 collector runs, 1421 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN); the one-cycle soak smoke resighted all six sources with zero events. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
 
 ## Implemented Sources
 
@@ -44,7 +44,7 @@ Production allowlist is empty. Production scheduling is absent. Alerts are disab
 
 ## Test State
 
-Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 26 passed, 0 failed, 0 skipped, 0 xfailed.
+Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 32 passed, 0 failed, 0 skipped, 0 xfailed.
 
 ## Known Issues
 
@@ -73,11 +73,11 @@ Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 26 passed, 
 
 ## Current Work
 
-Pre-soak roster is frozen. Implement the bounded soak runner next; do not start execution or promotion in this phase.
+Pre-soak roster is frozen. The bounded soak runner is implemented and smoke-tested once; do not start the 12-cycle execution or promotion in this phase.
 
 ## Next Recommended Step
 
-Implement the bounded experimental soak runner for the frozen six-source roster.
+Start the bounded 12-cycle experimental soak.
 
 Honor and TCL expansion gates completed. The current soak roster is 6 enabled sources across Apple, Samsung, Honor and TCL; `apple_in_sitemap` is retired/disabled with all historical evidence retained. Production remains empty and alerts remain disabled.
 

@@ -245,3 +245,101 @@ def test_healthy_experimental_sources_remain_runtime_selectable():
         "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
     }
+
+def test_soak_roster_resolves_exactly_and_rejects_drift(monkeypatch):
+    import tablet_clank.soak as soak
+    from tablet_clank.storage.db import Database
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        db = Database(f"{directory}/soak.db")
+        assert [s.id for s in soak.resolve_soak_sources(db)] == sorted(soak.FROZEN_SOAK_SOURCE_IDS)
+        monkeypatch.setattr(soak, "runtime_source_ids", lambda: tuple(sorted(soak.FROZEN_SOAK_SOURCE_IDS | {"unexpected_source"})))
+        try:
+            soak.resolve_soak_sources(db)
+            assert False, "roster drift must refuse soak"
+        except RuntimeError as exc:
+            assert "roster drift" in str(exc)
+        db.close()
+
+def test_soak_lock_conflict_stale_recovery_and_cleanup():
+    from tablet_clank.soak import SoakLock, SoakLockError
+    import json, tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        path = f"{directory}/tablet_clank.soak.lock"
+        first = SoakLock(path); first.acquire()
+        try:
+            try:
+                SoakLock(path).acquire()
+                assert False, "active lock must refuse"
+            except SoakLockError as exc:
+                assert "active soak lock" in str(exc)
+        finally:
+            first.release()
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump({"pid": 999999, "role": "stale"}, handle)
+        recovered = SoakLock(path); recovered.acquire(); assert recovered.acquired; recovered.release()
+        assert not __import__("pathlib").Path(path).exists()
+
+def test_soak_cycle_isolates_source_failure_and_reports_partial_failure(monkeypatch):
+    import tablet_clank.soak as soak
+    from tablet_clank.models import RunResult
+    from tablet_clank.storage.db import Database
+    import tempfile
+    calls = []
+    def fake_process(db, collector, fixture_mode=False):
+        calls.append(collector.source.id)
+        return RunResult(collector.source.id, status="failed" if len(calls) == 1 else "success", accepted_count=0 if len(calls) == 1 else 1)
+    monkeypatch.setattr(soak, "process", fake_process)
+    with tempfile.TemporaryDirectory() as directory:
+        db = Database(f"{directory}/soak.db")
+        report = soak.run_cycle(db, 1, fixture_mode=True)
+        assert calls == sorted(soak.FROZEN_SOAK_SOURCE_IDS)
+        assert report["status"] == "PARTIAL_FAILURE"
+        assert len(report["sources"]) == 6
+        db.close()
+
+def test_soak_cycle_aborts_on_integrity_or_duplicate_failure(monkeypatch):
+    import tablet_clank.soak as soak
+    from tablet_clank.storage.db import Database
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        db = Database(f"{directory}/soak.db")
+        monkeypatch.setattr(soak, "duplicate_identity_count", lambda db: 0)
+        monkeypatch.setattr(db, "integrity", lambda: "broken")
+        assert soak.run_cycle(db, 1, fixture_mode=True)["status"] == "SOAK_ABORTED_DB_INTEGRITY"
+        monkeypatch.setattr(db, "integrity", lambda: "ok")
+        monkeypatch.setattr(soak, "duplicate_identity_count", lambda db: 1)
+        assert soak.run_cycle(db, 2, fixture_mode=True)["status"] == "SOAK_ABORTED_DUPLICATE_IDENTITY"
+        db.close()
+
+def test_soak_readiness_requires_all_baselines():
+    import tablet_clank.soak as soak
+    from tablet_clank.storage.db import Database
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        db = Database(f"{directory}/soak.db")
+        try:
+            soak.readiness_check(db)
+            assert False, "missing baselines must refuse soak"
+        except RuntimeError as exc:
+            assert "baseline incomplete" in str(exc)
+        db.close()
+
+def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report():
+    import tablet_clank.soak as soak
+    from tablet_clank.storage.db import Database
+    import tempfile, json
+    with tempfile.TemporaryDirectory() as directory:
+        db_path = f"{directory}/soak.db"
+        db = Database(db_path)
+        soak.run_cycle(db, 0, fixture_mode=True)
+        db.close()
+        sleeps = []
+        report_path = f"{directory}/logs/soak.jsonl"
+        reports = soak.run_bounded(db_path, cycles=2, interval_seconds=7200, fixture_mode=True, report_path=report_path, sleep=sleeps.append)
+        assert len(reports) == 2
+        assert all(report["status"] == "SUCCESS" for report in reports)
+        assert sleeps == [7200]
+        records = [json.loads(line) for line in open(report_path, encoding="utf-8")]
+        assert records[0]["type"] == "soak_start"
+        assert [record["cycle"] for record in records[1:]] == [1, 2]

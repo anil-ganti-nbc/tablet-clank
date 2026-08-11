@@ -2,19 +2,19 @@ PROJECT
 Tablet Clank
 
 PHASE
-Pre-soak roster frozen; soak runner not implemented
+Pre-soak roster frozen; bounded soak runner implemented, not started
 
 PRODUCTION
 Allowlist empty; scheduling absent; alerts disabled
 
 DATABASE
-var/tablet_clank.db; integrity ok; 225 products, 668 observations, 21 runs, 1420 rejected candidates, 48 events; 48 identity_correction, 0 duplicate identity keys
+var/tablet_clank.db; integrity ok; 225 products, 847 observations, 27 runs, 1421 rejected candidates, 48 events; 48 identity_correction, 0 duplicate identity keys
 
 SCHEMA
 1
 
 TESTS
-python -m pytest -q -rA; passed=26 failed=0 skipped=0 xfailed=0
+python -m pytest -q -rA; passed=32 failed=0 skipped=0 xfailed=0
 
 SOURCES
 apple_in_sitemap=DISABLED/RETIRED, post-fix run failed closed 372/0/372/0; historical baseline untrusted; excluded from runtime/soak

@@ -1,6 +1,6 @@
 # Tablet Clank Soak Readiness
 
-Audit date: 2026-08-11. This document is a design review only; no soak runner or scheduled execution exists.
+Audit date: 2026-08-11. The bounded soak runner is implemented, but no 12-cycle soak or scheduler is running.
 
 ## Frozen roster
 
@@ -33,7 +33,7 @@ The database contains 48 historical Apple `identity_correction` events and no Ho
 
 ## Conceptual execution model
 
-Use one deterministic process per cycle, with fixed source order and no concurrency. The future manual command should run one cycle explicitly; the bounded soak command should run a finite number of cycles and then stop. Each cycle should continue after an individual source failure and finish as `SUCCESS`, `PARTIAL_FAILURE`, or `FAILED` according to source outcomes.
+Use one deterministic process per cycle, with fixed source order and no concurrency. `python -m tablet_clank.cli soak` runs a finite number of cycles and then stops. Each cycle continues after an individual source failure and finishes as `SUCCESS` or `PARTIAL_FAILURE`; integrity and duplicate failures abort the soak.
 
 Recommended order: Apple Store US, Apple Store IN, Samsung US, Honor catalogue, Honor comparison, TCL.
 
@@ -49,7 +49,7 @@ One failed source must produce a recorded source failure while allowing other so
 
 ## Run locking and portability
 
-Implement the smallest cross-platform lock around a cycle: an exclusive lock file created atomically beside the database, containing PID/start metadata, removed on normal exit, and treated as stale only after an explicit age/process check. Manual collection and soak execution should use the same lock policy. Avoid PowerShell-only commands, Windows paths, shell-specific quoting and absolute desktop paths; resolve paths relative to the repository or configured environment variables. The database path should remain configurable, defaulting to `var/tablet_clank.db`, with logs/reports under ignored `var/logs/` or an explicitly configured output directory.
+The implemented runner uses the smallest cross-platform lock around a cycle: an exclusive lock file created atomically beside the database, containing PID/start metadata, removed on normal exit, and treated as stale only when local liveness proves the owner is dead. Manual collection and soak execution use the same lock policy. Paths are configurable and portable, defaulting to `var/tablet_clank.db` and `var/logs/soak.jsonl`.
 
 ## Success criteria
 
@@ -58,6 +58,10 @@ Require 12 consecutive two-hour cycles for the six-source healthy soak roster. E
 ## Promotion policy
 
 Promotion is a separate human-reviewed phase. Soak completion never automatically promotes a source. Production allowlist remains empty and alerts remain disabled.
+
+## Smoke validation
+
+One live cycle was run on 2026-08-11 with `--cycles 1 --interval-seconds 0`. All six sources succeeded serially, existing identities were resighted, Samsung accepted 3 of 4 candidates with 1 expected rejection, all other sources accepted their full candidate sets, and the cycle produced 0 events, 0 duplicates and database integrity `ok`.
 
 ## Readiness verdict
 

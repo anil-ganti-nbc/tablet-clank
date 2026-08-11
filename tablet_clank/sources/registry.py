@@ -19,6 +19,6 @@ PRODUCTION_ALLOWLIST: tuple[str, ...] = ()
 
 def runtime_source_ids() -> tuple[str, ...]:
     """Single authority for enabled experimental runtime/soak membership."""
-    return tuple(source_id for source_id, source in SOURCES.items() if source.state == "EXPERIMENTAL")
+    return tuple(sorted(source_id for source_id, source in SOURCES.items() if source.state == "EXPERIMENTAL"))
 
 def get_source(source_id): return SOURCES[source_id]
