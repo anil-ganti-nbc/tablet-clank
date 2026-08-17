@@ -1,6 +1,6 @@
 # Tablet Clank Soak Readiness
 
-Audit date: 2026-08-11. The bounded soak runner is implemented, but no 12-cycle soak or scheduler is running.
+Audit date: 2026-08-11 (readiness); soak completed 2026-08-13. **This document is now historical.** The 12-cycle soak ran 2026-08-12T08:54:59Z through 2026-08-13T06:59:48Z (22h04m49s), all 12 cycles `SUCCESS`, 0 partial failures, 0 events, 0 duplicates, integrity `ok` throughout. Full evidence: `var/logs/soak.jsonl` and the `tablet-clank-soak.service` journal. Promotion Wave 1 (Honor + TCL) followed on 2026-08-17 — see `docs/PROJECT_STATE.md` and `HANDOFF.md` for current state. No scheduler is running; the soak service is disabled/inactive and its roster now refuses to run post-promotion (see `docs/OPERATIONS.md`).
 
 ## Frozen roster
 
@@ -57,7 +57,7 @@ Require 12 consecutive two-hour cycles for the six-source healthy soak roster. E
 
 ## Promotion policy
 
-Promotion is a separate human-reviewed phase. Soak completion never automatically promotes a source. Production allowlist remains empty and alerts remain disabled.
+Promotion is a separate human-reviewed phase. Soak completion never automatically promotes a source. **Update (2026-08-17):** the owner manually reviewed the completed soak and approved Promotion Wave 1 — `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison` and `tcl_global_tablets` are now in `PRODUCTION_ALLOWLIST`. Apple US/IN and Samsung remain experimental; their promotion, if any, requires a separate future human-reviewed decision.
 
 ## Smoke validation
 
@@ -65,4 +65,4 @@ One live cycle was run on 2026-08-11 with `--cycles 1 --interval-seconds 0`. All
 
 ## Readiness verdict
 
-`READY_TO_IMPLEMENT_SOAK`. The six enabled sources are healthy enough for bounded experimental soak; the retired Apple sitemap is excluded by the registry selection rule.
+`READY_TO_IMPLEMENT_SOAK` — superseded. The 12-cycle soak completed 2026-08-13 with 12/12 `SUCCESS`; see the historical-fact note at the top of this document and `docs/PROJECT_STATE.md` for the current post-promotion state.

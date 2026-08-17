@@ -15,10 +15,20 @@ SOURCES = {
  "honor_cn_tablets_comparison": Source("honor_cn_tablets_comparison", "Honor", "CN", "Honor China tablet comparison", "https://www.honor.com/cn/tablets/comparison/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_cn_tablets_comparison.json")),
  "tcl_global_tablets": Source("tcl_global_tablets", "TCL", "GLOBAL", "TCL global tablet catalogue", "https://www.tcl.com/global/en/tablets", "EXPERIMENTAL", str(ROOT / "tests/fixtures/tcl_global_tablets.html")),
 }
-PRODUCTION_ALLOWLIST: tuple[str, ...] = ()
+PRODUCTION_ALLOWLIST: tuple[str, ...] = (
+    "honor_cn_tablets_catalogue",
+    "honor_cn_tablets_comparison",
+    "tcl_global_tablets",
+)
+
+ALERTS_ENABLED: bool = False
 
 def runtime_source_ids() -> tuple[str, ...]:
     """Single authority for enabled experimental runtime/soak membership."""
     return tuple(sorted(source_id for source_id, source in SOURCES.items() if source.state == "EXPERIMENTAL"))
+
+def production_source_ids() -> tuple[str, ...]:
+    """Single authority for production-eligible membership: explicit allowlist AND currently experimental."""
+    return tuple(sorted(source_id for source_id in PRODUCTION_ALLOWLIST if source_id in SOURCES and SOURCES[source_id].state == "EXPERIMENTAL"))
 
 def get_source(source_id): return SOURCES[source_id]

@@ -144,7 +144,7 @@ def collector_for(source, fixture_mode: bool):
     return cls(source, fixture_mode=fixture_mode)
 
 
-def _result_summary(result: RunResult, db: Database, event_ids_before: set[int]) -> dict:
+def result_summary(result: RunResult, db: Database, event_ids_before: set[int]) -> dict:
     new_events = [dict(row) for row in db.conn.execute("SELECT id,source_id,event_type,product_id,new_value,evidence_url FROM change_events WHERE id > 0") if row["id"] not in event_ids_before]
     return {"source": result.source_id, "health": result.status, "raw": result.raw_count, "validated": result.validated_count, "rejected": result.rejected_count, "accepted": result.accepted_count, "new": result.new_count, "updated": result.updated_count, "resighted": result.resighted_count, "events": new_events, "error": result.error}
 
@@ -159,7 +159,7 @@ def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False) -> di
             result = process(db, collector_for(source, fixture_mode), fixture_mode=fixture_mode)
         except Exception as exc:  # defensive isolation around a source boundary
             result = RunResult(source.id, status="failed", error=str(exc))
-        source_summaries.append(_result_summary(result, db, before))
+        source_summaries.append(result_summary(result, db, before))
     integrity = db.integrity()
     duplicates = duplicate_identity_count(db)
     if integrity != "ok": status = "SOAK_ABORTED_DB_INTEGRITY"

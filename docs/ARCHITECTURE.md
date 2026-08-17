@@ -6,7 +6,7 @@
 
 ### Source and collection
 
-- `tablet_clank/sources/registry.py` defines the four registered experimental sources and the empty production allowlist.
+- `tablet_clank/sources/registry.py` defines the registered sources, the `EXPERIMENTAL`/`DISABLED` state per source, and `PRODUCTION_ALLOWLIST` — an explicit, auditable tuple of source IDs approved for production execution, separate from `state`. `production_source_ids()` is the single authority for production membership: it intersects `PRODUCTION_ALLOWLIST` with sources currently `EXPERIMENTAL`, so a source can never become production-eligible by allowlist membership alone, and demoting a source's `state` automatically removes it from production even if the allowlist tuple is stale. `ALERTS_ENABLED = False` is an explicit, tested invariant; no alert/delivery code exists anywhere in the codebase.
 - `tablet_clank/collectors/base.py` retrieves HTML/XML with timeout, user agent, status and content-type checks.
 - `tablet_clank/collectors/html_catalogue.py` parses HTML anchor links and metadata for Apple.
 - `tablet_clank/collectors/xml_sitemap.py` parses standard XML `<loc>` entries, filters Samsung tablet paths and extracts `SM-*` identifiers from URL slugs.
@@ -38,7 +38,9 @@ The historical Apple sitemap baseline contains false-positive navigation-like re
 
 PLANNED: scheduler, repeated-healthy-run disappearance semantics, source-specific Apple product discovery, external alert delivery, editorial scoring, dashboard, AI classification, historical backfill and production deployment.
 
-Pre-soak review is recorded in `docs/SOAK_READINESS.md`; operating instructions are in `docs/SOAK_OPERATIONS.md`. The bounded runner executes the six enabled experimental sources serially under one cross-platform cycle lock, isolates source failures, and writes JSONL orchestration summaries while reusing collector-run/source-state/observation/event tables. The retired `apple_in_sitemap` source remains inspectable but is excluded by the registry’s `state == "EXPERIMENTAL"` selection rule.
+Pre-soak review is recorded in `docs/SOAK_READINESS.md`; operating instructions are in `docs/SOAK_OPERATIONS.md`. The bounded soak runner (`tablet_clank/soak.py`) executes the six enabled experimental sources serially under one cross-platform cycle lock, isolates source failures, and writes JSONL orchestration summaries while reusing collector-run/source-state/observation/event tables. The retired `apple_in_sitemap` source remains inspectable but is excluded by the registry's `state == "EXPERIMENTAL"` selection rule. The soak roster additionally refuses to run if any of its sources are production-allowlisted (`resolve_soak_sources` raises `RuntimeError`), which is why the soak is permanently retired for the old six-source roster now that Honor/TCL are promoted (Promotion Wave 1, 2026-08-17).
+
+`tablet_clank/production.py` is a parallel, minimal bounded runner for exactly `production_source_ids()`. It imports and reuses `soak.py`'s `SoakLock`, `lock_path_for_db`, `duplicate_identity_count`, `collector_for` and `result_summary` rather than duplicating them, so production execution shares the same lock domain (`var/tablet_clank.soak.lock`), identity semantics and baseline semantics as soak and manual `collect`. It writes its own JSONL report to `var/logs/production.jsonl` (kept separate from soak evidence) and its own abort status names (`PRODUCTION_ABORTED_DB_INTEGRITY`/`PRODUCTION_ABORTED_DUPLICATE_IDENTITY`) to avoid conflating soak and production audit trails. `readiness_check` refuses to run if `ALERTS_ENABLED` is ever set. There is no scheduler for production execution, same as soak — both are on-demand/CLI-invoked only.
 
 Lenovo PSREF is currently `OFFLINE_PROBE` only. The reduced fixture and parser contract do not establish a source, baseline, live ingestion path, database rows, or Lenovo event semantics.
 

@@ -6,7 +6,7 @@ Tablet Clank is an independent, evidence-first system for discovering meaningful
 
 ## Current Project State
 
-Foundation/Stage 1 Apple source reconnaissance is complete. The repository is the authoritative project state. Lenovo first-party reconnaissance is documented as research only; no next feature phase has started. Current Git branch is `master`; this work started from Git HEAD `a66e52f`.
+The bounded 12-cycle experimental soak completed successfully and Promotion Wave 1 (Honor + TCL) is now live. The repository is the authoritative project state. Lenovo first-party reconnaissance is documented as research only. Current Git branch is `main`; this handoff reflects Git HEAD `f38f36e` plus the Promotion Wave 1 commit on top of it.
 
 ## Repository / Environment
 
@@ -24,7 +24,19 @@ Implemented modules are documented in `docs/ARCHITECTURE.md`. There is no schedu
 
 ## Database
 
-The canonical database currently has integrity `ok`, 6 enabled experimental sources plus 1 retired historical source, 225 products, 847 observations, 27 collector runs, 1421 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN); the one-cycle soak smoke resighted all six sources with zero events. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
+The canonical database currently has integrity `ok`, 6 enabled experimental sources plus 1 retired historical source, 225 products, 3254 observations, 108 collector runs, 1434 rejected candidates, and 48 change events. All 48 are typed `identity_correction` (24 US, 24 IN), and all predate the soak (2026-08-10); the 12-cycle soak and the first controlled production cycle produced zero soak/production-generated events and zero duplicate identity keys. `var/debug.db` is an ignored, non-canonical artifact from an earlier failed debugging run and must not be used as project state.
+
+## Completed 12-Cycle Soak (historical fact)
+
+Ran 2026-08-12T08:54:59Z through 2026-08-13T06:59:48Z (22h04m49s wall-clock) against the frozen six-source roster. Result: 12/12 cycles `SUCCESS`, 0 `PARTIAL_FAILURE`, 0 correctness failures, 0 soak-generated events, 0 duplicate identities, database integrity `ok` on every cycle. Full evidence in `var/logs/soak.jsonl` and the `tablet-clank-soak.service` systemd journal. The soak service is disabled/inactive; it was not restarted for this promotion.
+
+## Promotion Wave 1 (2026-08-17)
+
+`honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison` and `tcl_global_tablets` are now production-approved via an explicit `PRODUCTION_ALLOWLIST` in `tablet_clank/sources/registry.py`. `apple_us_ipad_pro_store`, `apple_in_ipad_pro_store` and `samsung_us_sitemap` remain experimental, post-soak, not production-approved, pending a later hardening/review phase. `apple_in_sitemap` remains disabled/retired. Source `state` (`EXPERIMENTAL`/`DISABLED`) is unchanged by promotion — production eligibility is a separate, explicit, auditable allowlist layered on top of state, not a new state value. See `docs/OPERATIONS.md` for the `production`/`production --check` commands.
+
+A new `tablet_clank/production.py` module runs a single bounded, serial, locked collection cycle for exactly the production-allowlisted sources, reusing the soak module's lock, identity/baseline semantics and collector selection. It shares the soak/manual-collect lock domain (`var/tablet_clank.soak.lock`) so a production run cannot overlap a soak or manual collection. One controlled production cycle was run on 2026-08-17: all three sources succeeded, all resighted their existing baseline with 0 new products and 0 events. No alerts or external delivery exist in this codebase; `ALERTS_ENABLED = False` is an explicit, tested invariant. No scheduling was added — the completed soak service and the new production path both remain inactive/on-demand only.
+
+Note: the old frozen six-source soak roster (`FROZEN_SOAK_SOURCE_IDS` in `tablet_clank/soak.py`) now intentionally refuses to run, because 3 of its 6 sources are production-allowlisted (`resolve_soak_sources` raises `"soak roster contains a production-allowlisted source"`). Do not restart the old 12-cycle soak; it is retired by design now that Wave 1 is promoted.
 
 ## Implemented Sources
 
@@ -32,19 +44,19 @@ The canonical database currently has integrity `ok`, 6 enabled experimental sour
 - `apple_us_ipad_pro_store`: Apple, US, experimental Store configuration collector. Run 14 produced 48 raw/validated/accepted configurations, 0 new, 48 resighted.
 - `apple_in_ipad_pro_store`: Apple, IN, experimental Store configuration collector. Run 15 produced 48 raw/validated/accepted configurations, 0 new, 48 resighted.
 - `samsung_us_sitemap`: Samsung, US, official regional XML product sitemap at `https://www.samsung.com/us/top_sitemap.xml`, experimental. Run 3 accepted 4 URLs including one generic category; run 4 accepted/resighted 3 genuine model-code URLs and rejected the category.
-- `honor_cn_tablets_catalogue`: Honor, CN, official HTML catalogue, experimental. Runs 16/18 accepted and resighted 32 candidates with zero events.
-- `honor_cn_tablets_comparison`: Honor, CN, official HTML comparison surface, experimental. Runs 17/19 accepted and resighted 24 shared identities with zero events.
-- `tcl_global_tablets`: TCL, GLOBAL, official HTML tablet catalogue, experimental. Runs 20/21 accepted and resighted 24 candidates with zero events.
+- `honor_cn_tablets_catalogue`: Honor, CN, official HTML catalogue, experimental, **production-approved (Wave 1)**. 12/12 soak cycles healthy plus one controlled production cycle, all resighting 32 candidates with zero events.
+- `honor_cn_tablets_comparison`: Honor, CN, official HTML comparison surface, experimental, **production-approved (Wave 1)**. 12/12 soak cycles healthy plus one controlled production cycle, all resighting 24 shared identities with zero events.
+- `tcl_global_tablets`: TCL, GLOBAL, official HTML tablet catalogue, experimental, **production-approved (Wave 1)**. 12/12 soak cycles healthy plus one controlled production cycle, all resighting 24 candidates with zero events.
 
 Full source truth is in `docs/SOURCE_INVENTORY.md`. Broader reconnaissance is in `docs/SOURCE_RESEARCH.md`.
 
 ## Production State
 
-Production allowlist is empty. Production scheduling is absent. Alerts are disabled; no Discord integration or destination is configured. Experimental sources must not be promoted automatically.
+Production allowlist contains exactly `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets` (Promotion Wave 1, 2026-08-17). Production scheduling is absent — the production path runs on demand only (`python -m tablet_clank.cli production`), the same as manual collection; nothing is unattended. Alerts are disabled (`ALERTS_ENABLED = False`); no Discord integration or destination is configured. Remaining experimental sources (Apple US/IN, Samsung) must not be promoted automatically; any future promotion remains a separate human-reviewed decision, same as this one.
 
 ## Test State
 
-Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 32 passed, 0 failed, 0 skipped, 0 xfailed.
+Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 43 passed, 0 failed, 0 skipped, 0 xfailed.
 
 ## Known Issues
 
@@ -73,17 +85,15 @@ Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 32 passed, 
 
 ## Current Work
 
-Pre-soak roster is frozen. The bounded soak runner is implemented and smoke-tested once; do not start the 12-cycle execution or promotion in this phase.
+Promotion Wave 1 is complete: Honor (catalogue + comparison) and TCL are production-approved and have completed one controlled production cycle. Apple US/IN and Samsung remain experimental/soaked but not production-approved.
 
 ## Next Recommended Step
 
-Start the bounded 12-cycle experimental soak.
-
-Honor and TCL expansion gates completed. The current soak roster is 6 enabled sources across Apple, Samsung, Honor and TCL; `apple_in_sitemap` is retired/disabled with all historical evidence retained. Production remains empty and alerts remain disabled.
+Design and validate unattended production scheduling and internal event review for the promoted Honor/TCL sources before enabling any external delivery.
 
 ## Do Not Do Yet
 
-Do not add manufacturers, expand regions, promote sources, enable production or alerts, scrape retailers, add AI, build a dashboard, or perform speculative architecture refactors. Do not delete historical false-positive evidence.
+Do not add manufacturers, expand regions, promote Apple or Samsung, enable alerts/external delivery, scrape retailers, add AI, build a dashboard, add unattended/recurring scheduling, or perform speculative architecture refactors. Do not delete historical false-positive evidence. Do not restart the old 6-source frozen soak (it now refuses to run by design, since 3 of its sources are production-allowlisted).
 
 ## Essential Commands
 
@@ -95,6 +105,8 @@ python -m tablet_clank.cli collect --all
 python -m tablet_clank.cli status
 python -m tablet_clank.cli health
 python -m tablet_clank.cli db-integrity
+python -m tablet_clank.cli production --check
+python -m tablet_clank.cli production
 ```
 
 ## Continuation Protocol

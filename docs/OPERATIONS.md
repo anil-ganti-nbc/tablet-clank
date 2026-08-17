@@ -61,6 +61,15 @@ python -m tablet_clank.cli soak --cycles 12 --interval-seconds 7200
 The runner is serial, bounded and locked against overlapping manual collection. It writes reports to `var/logs/soak.jsonl`, stops on database-integrity or duplicate-identity failure, isolates source failures, and never sends alerts or promotes sources. Full operating semantics are documented in `docs/SOAK_OPERATIONS.md`.
 ```
 
+## Bounded production execution (Promotion Wave 1)
+
+```text
+python -m tablet_clank.cli production --check
+python -m tablet_clank.cli production
+```
+
+The production runner resolves exactly the sources in `PRODUCTION_ALLOWLIST` (currently `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets`), intersected with current `EXPERIMENTAL` state via `production_source_ids()`. It is serial, bounded to one cycle per invocation, shares the same `var/tablet_clank.soak.lock` locking domain as soak and manual `collect` (so runs cannot overlap), isolates source failures, and reuses the same identity/baseline semantics as soak and manual collection. It writes reports to `var/logs/production.jsonl`. There is no scheduler; production execution is on-demand only, same as manual collection. It never sends alerts (`ALERTS_ENABLED = False`, enforced in `readiness_check`) and never promotes additional sources.
+
 ## Health and database
 
 ```text
@@ -73,10 +82,10 @@ Schema version is read from `schema_migrations`; the current migration reference
 
 ## Current live caveat
 
-Apple’s live navigation sitemap returned 372 raw links but, after the identifier-quality fix, 0 accepted candidates and failed closed. Corrected Apple Store runs for both US and IN returned 48 raw/validated/accepted configurations and then 48 resighted configurations. Samsung’s replacement XML sitemap returned 4 raw URLs, 3 accepted product candidates and 1 rejected generic category URL, then resighted the 3 accepted identities. No source is production validated.
+Apple’s live navigation sitemap returned 372 raw links but, after the identifier-quality fix, 0 accepted candidates and failed closed. Corrected Apple Store runs for both US and IN returned 48 raw/validated/accepted configurations and then 48 resighted configurations. Samsung’s replacement XML sitemap returned 4 raw URLs, 3 accepted product candidates and 1 rejected generic category URL, then resighted the 3 accepted identities. Apple US/IN and Samsung are not production validated; Honor and TCL are (Promotion Wave 1).
 
 The Xiaomi Mi Mall Pad 7/Pad 8 probe is offline-only. Its current fixtures intentionally fail closed because the requested numeric IDs resolve to unrelated products. Do not register or live-collect Xiaomi until a reliable public product/variant identity surface is proven.
 
-## Pre-soak readiness
+## Post-soak state
 
-The frozen six-source roster and conceptual soak model are documented in `docs/SOAK_READINESS.md`. No 12-cycle soak execution is enabled. `apple_in_sitemap` is retired and disabled; it remains historical evidence but cannot be selected by runtime collection. Production allowlisting and alerts remain disabled.
+The frozen six-source roster completed its 12-cycle soak on 2026-08-13 (see `docs/SOAK_READINESS.md` and `docs/SOAK_OPERATIONS.md` for the conceptual model). The soak service (`tablet-clank-soak.service`) is disabled/inactive and was not restarted for this promotion; its old roster now intentionally refuses to run (`resolve_soak_sources` raises, since 3 of its sources are production-allowlisted). `apple_in_sitemap` is retired and disabled; it remains historical evidence but cannot be selected by runtime collection or production. Alerts remain disabled; production allowlisting is now non-empty (Promotion Wave 1) but scheduling remains absent.

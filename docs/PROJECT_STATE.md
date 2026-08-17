@@ -2,28 +2,31 @@ PROJECT
 Tablet Clank
 
 PHASE
-Pre-soak roster frozen; bounded soak runner implemented, not started
+Promotion Wave 1 complete: 12-cycle soak passed 12/12; Honor + TCL production-approved and controlled-production-verified
 
 PRODUCTION
-Allowlist empty; scheduling absent; alerts disabled
+Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets; scheduling absent (on-demand only); alerts disabled
 
 DATABASE
-var/tablet_clank.db; integrity ok; 225 products, 847 observations, 27 runs, 1421 rejected candidates, 48 events; 48 identity_correction, 0 duplicate identity keys
+var/tablet_clank.db; integrity ok; 225 products, 3254 observations, 108 runs, 1434 rejected candidates, 48 events; 48 identity_correction (all pre-soak), 0 duplicate identity keys
 
 SCHEMA
 1
 
 TESTS
-python -m pytest -q -rA; passed=32 failed=0 skipped=0 xfailed=0
+python -m pytest -q -rA; passed=43 failed=0 skipped=0 xfailed=0
 
 SOURCES
-apple_in_sitemap=DISABLED/RETIRED, post-fix run failed closed 372/0/372/0; historical baseline untrusted; excluded from runtime/soak
-apple_us_ipad_pro_store=EXPERIMENTAL, run 14 48/48/0/48, 0 new, 48 resighted; 24 historical identity_correction events
-apple_in_ipad_pro_store=EXPERIMENTAL, run 15 48/48/0/48, 0 new, 48 resighted; 24 historical identity_correction events
-samsung_us_sitemap=EXPERIMENTAL, official XML replacement live, run 3 4/4/0/4 then run 4 4/3/1/3 resight; unchanged
-honor_cn_tablets_catalogue=EXPERIMENTAL, runs 16/18 32/32/0/32 baseline/resight; 0 events
-honor_cn_tablets_comparison=EXPERIMENTAL, runs 17/19 24/24/0/24 baseline/resight; 0 events
-tcl_global_tablets=EXPERIMENTAL, runs 20/21 24/24/0/24 baseline/resight; 0 events
+apple_in_sitemap=DISABLED/RETIRED, post-fix run failed closed 372/0/372/0; historical baseline untrusted; excluded from runtime/soak; not production eligible
+apple_us_ipad_pro_store=EXPERIMENTAL, post-soak, NOT production-approved; 18 total runs, 12 in-soak, all healthy; 24 historical identity_correction events
+apple_in_ipad_pro_store=EXPERIMENTAL, post-soak, NOT production-approved; 18 total runs, 12 in-soak, all healthy; 24 historical identity_correction events
+samsung_us_sitemap=EXPERIMENTAL, post-soak, NOT production-approved; 17 total runs, 12 in-soak, all healthy
+honor_cn_tablets_catalogue=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
+honor_cn_tablets_comparison=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
+tcl_global_tablets=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
+
+SOAK_HISTORY
+2026-08-12T08:54:59Z to 2026-08-13T06:59:48Z (22h04m49s); 12/12 SUCCESS; 0 PARTIAL_FAILURE; 0 correctness failures; 0 soak-generated events; 0 duplicates; integrity ok throughout. Full evidence: var/logs/soak.jsonl. Soak service now permanently retired for the old 6-source roster (refuses to run: 3 of its sources are production-allowlisted).
 
 KNOWN_GOOD
 Fixture parsing, offline Lenovo PSREF reduced-fixture parsing, exact PSREF identifier preservation, PSREF regional separation, WLAN/WWAN distinction, Apple Store structured configuration parsing, regional SKU extraction, carrier deduplication, corrected US/IN resighting, XML sitemap parsing, conservative validation, SQLite integrity, failure recording
@@ -50,7 +53,7 @@ UNVERIFIED
 Long-term Apple Store markup stability, SKU-to-A-model mapping, production safety, global canonical unification, additional Samsung stability
 
 NEXT_ACTION
-Implement the bounded experimental soak runner for the frozen six-source roster.
+Design and validate unattended production scheduling and internal event review for the promoted Honor/TCL sources before enabling any external delivery.
 
 STOP_CONDITIONS
-Do not promote sources, enable production/alerts, expand OEM scope, scrape retailers, or refactor speculatively. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
+Do not promote Apple or Samsung, enable alerts/external delivery, expand OEM scope, scrape retailers, add unattended scheduling, or refactor speculatively. Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.

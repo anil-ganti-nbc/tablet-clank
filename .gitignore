@@ -3,8 +3,12 @@ __pycache__/
 .pytest_cache/
 .venv/
 var/*.db
+var/*.db-wal
+var/*.db-shm
 var/*.sqlite*
+var/*.lock
 var/logs/
 .env
 *.log
 *.dump
+*.egg-info/

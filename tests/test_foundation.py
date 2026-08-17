@@ -250,6 +250,7 @@ def test_soak_roster_resolves_exactly_and_rejects_drift(monkeypatch):
     import tablet_clank.soak as soak
     from tablet_clank.storage.db import Database
     import tempfile
+    monkeypatch.setattr(soak, "PRODUCTION_ALLOWLIST", ())
     with tempfile.TemporaryDirectory() as directory:
         db = Database(f"{directory}/soak.db")
         assert [s.id for s in soak.resolve_soak_sources(db)] == sorted(soak.FROZEN_SOAK_SOURCE_IDS)
@@ -259,6 +260,23 @@ def test_soak_roster_resolves_exactly_and_rejects_drift(monkeypatch):
             assert False, "roster drift must refuse soak"
         except RuntimeError as exc:
             assert "roster drift" in str(exc)
+        db.close()
+
+def test_frozen_soak_roster_now_refuses_due_to_production_overlap():
+    """Post-Promotion-Wave-1 regression: the old 6-source frozen soak roster
+    can no longer run for real, because 3 of its sources are now
+    production-allowlisted. This is intentional; do not restart the old
+    12-cycle soak after promotion."""
+    import tablet_clank.soak as soak
+    from tablet_clank.storage.db import Database
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        db = Database(f"{directory}/soak.db")
+        try:
+            soak.resolve_soak_sources(db)
+            assert False, "soak roster must refuse once it overlaps the production allowlist"
+        except RuntimeError as exc:
+            assert "production-allowlisted source" in str(exc)
         db.close()
 
 def test_soak_lock_conflict_stale_recovery_and_cleanup():
@@ -290,6 +308,7 @@ def test_soak_cycle_isolates_source_failure_and_reports_partial_failure(monkeypa
         calls.append(collector.source.id)
         return RunResult(collector.source.id, status="failed" if len(calls) == 1 else "success", accepted_count=0 if len(calls) == 1 else 1)
     monkeypatch.setattr(soak, "process", fake_process)
+    monkeypatch.setattr(soak, "PRODUCTION_ALLOWLIST", ())
     with tempfile.TemporaryDirectory() as directory:
         db = Database(f"{directory}/soak.db")
         report = soak.run_cycle(db, 1, fixture_mode=True)
@@ -302,6 +321,7 @@ def test_soak_cycle_aborts_on_integrity_or_duplicate_failure(monkeypatch):
     import tablet_clank.soak as soak
     from tablet_clank.storage.db import Database
     import tempfile
+    monkeypatch.setattr(soak, "PRODUCTION_ALLOWLIST", ())
     with tempfile.TemporaryDirectory() as directory:
         db = Database(f"{directory}/soak.db")
         monkeypatch.setattr(soak, "duplicate_identity_count", lambda db: 0)
@@ -312,10 +332,11 @@ def test_soak_cycle_aborts_on_integrity_or_duplicate_failure(monkeypatch):
         assert soak.run_cycle(db, 2, fixture_mode=True)["status"] == "SOAK_ABORTED_DUPLICATE_IDENTITY"
         db.close()
 
-def test_soak_readiness_requires_all_baselines():
+def test_soak_readiness_requires_all_baselines(monkeypatch):
     import tablet_clank.soak as soak
     from tablet_clank.storage.db import Database
     import tempfile
+    monkeypatch.setattr(soak, "PRODUCTION_ALLOWLIST", ())
     with tempfile.TemporaryDirectory() as directory:
         db = Database(f"{directory}/soak.db")
         try:
@@ -325,10 +346,11 @@ def test_soak_readiness_requires_all_baselines():
             assert "baseline incomplete" in str(exc)
         db.close()
 
-def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report():
+def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report(monkeypatch):
     import tablet_clank.soak as soak
     from tablet_clank.storage.db import Database
     import tempfile, json
+    monkeypatch.setattr(soak, "PRODUCTION_ALLOWLIST", ())
     with tempfile.TemporaryDirectory() as directory:
         db_path = f"{directory}/soak.db"
         db = Database(db_path)
@@ -343,3 +365,71 @@ def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report():
         records = [json.loads(line) for line in open(report_path, encoding="utf-8")]
         assert records[0]["type"] == "soak_start"
         assert [record["cycle"] for record in records[1:]] == [1, 2]
+
+def test_production_allowlist_contains_exactly_approved_sources():
+    from tablet_clank.sources.registry import PRODUCTION_ALLOWLIST, production_source_ids
+    assert set(PRODUCTION_ALLOWLIST) == {
+        "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+    }
+    assert set(production_source_ids()) == set(PRODUCTION_ALLOWLIST)
+
+def test_apple_store_sources_are_not_production_eligible():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "apple_us_ipad_pro_store" not in production_source_ids()
+    assert "apple_in_ipad_pro_store" not in production_source_ids()
+
+def test_samsung_is_not_production_eligible():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "samsung_us_sitemap" not in production_source_ids()
+
+def test_retired_apple_sitemap_is_not_production_eligible():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "apple_in_sitemap" not in production_source_ids()
+
+def test_production_selection_cannot_accidentally_include_arbitrary_experimental_source():
+    from tablet_clank.sources.registry import production_source_ids, runtime_source_ids
+    production_ids = set(production_source_ids())
+    experimental_ids = set(runtime_source_ids())
+    assert production_ids < experimental_ids
+    assert experimental_ids - production_ids == {
+        "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
+    }
+
+def test_honor_catalogue_is_production_selectable():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "honor_cn_tablets_catalogue" in production_source_ids()
+
+def test_honor_comparison_is_production_selectable():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "honor_cn_tablets_comparison" in production_source_ids()
+
+def test_tcl_is_production_selectable():
+    from tablet_clank.sources.registry import production_source_ids
+    assert "tcl_global_tablets" in production_source_ids()
+
+def test_production_run_has_no_alert_or_delivery_side_effect():
+    import inspect
+    from tablet_clank.sources.registry import ALERTS_ENABLED
+    import tablet_clank.production as production_module
+    assert ALERTS_ENABLED is False
+    source = inspect.getsource(production_module)
+    for forbidden in ("discord", "smtp", "slack", "webhook", "requests.post"):
+        assert forbidden not in source.lower()
+
+def test_production_cycle_preserves_baseline_semantics(tmp_path):
+    import tablet_clank.production as production
+    from tablet_clank.storage.db import Database
+    db = Database(tmp_path / "prod.db")
+    first = production.run_production_cycle(db, fixture_mode=True)
+    assert first["status"] == "SUCCESS"
+    assert {item["source"] for item in first["sources"]} == {
+        "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+    }
+    for item in first["sources"]:
+        assert item["health"] == "success" and item["new"] > 0
+    second = production.run_production_cycle(db, fixture_mode=True)
+    assert second["status"] == "SUCCESS"
+    for item in second["sources"]:
+        assert item["health"] == "success" and item["new"] == 0 and item["resighted"] > 0
+    assert db.integrity() == "ok"
+    db.close()
