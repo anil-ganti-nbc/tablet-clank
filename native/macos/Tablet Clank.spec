@@ -10,7 +10,7 @@ a = Analysis(
     pathex=[str(root), str(root / "native" / "macos")],
     binaries=[],
     datas=[],
-    hiddenimports=["webapp", "tablet_clank.production", "tablet_clank.soak", "tablet_clank.sources.registry", "tablet_clank.storage.db"],
+    hiddenimports=["webapp", "dash_data", "dash_render", "dash_names", "tablet_clank.production", "tablet_clank.soak", "tablet_clank.sources.registry", "tablet_clank.storage.db"],
 )
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Tablet Clank", console=False)
