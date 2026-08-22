@@ -12,3 +12,5 @@ var/logs/
 *.log
 *.dump
 *.egg-info/
+native/macos/build/
+native/macos/dist/
