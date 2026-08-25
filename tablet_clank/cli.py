@@ -16,7 +16,9 @@ def main(argv=None):
     p=sub.add_parser("collect"); p.add_argument("source",nargs="?"); p.add_argument("--all",action="store_true"); p.add_argument("--live",action="store_true"); p.add_argument("--db",default="var/tablet_clank.db")
     p=sub.add_parser("soak"); p.add_argument("--cycles",type=int,default=12); p.add_argument("--interval-seconds",type=float,default=7200); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--check",action="store_true")
     p=sub.add_parser("production"); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--check",action="store_true")
-    sub.add_parser("sources"); sub.add_parser("health"); sub.add_parser("status"); sub.add_parser("db-integrity")
+    p=sub.add_parser("backup"); p.add_argument("output"); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--force",action="store_true")
+    p=sub.add_parser("db-integrity"); p.add_argument("--db",default="var/tablet_clank.db")
+    sub.add_parser("sources"); sub.add_parser("health"); sub.add_parser("status")
     args=parser.parse_args(argv); db=Database(getattr(args,"db","var/tablet_clank.db"))
     if args.command=="sources":
         for s in SOURCES.values():
@@ -58,6 +60,17 @@ def main(argv=None):
                 print(json.dumps(report, ensure_ascii=False, sort_keys=True))
         except (SoakLockError, RuntimeError, ValueError) as exc:
             print(f"production refused: {exc}")
+            db.close()
+            return 2
+    elif args.command=="backup":
+        # Recovery points are writer-coordinated like every other mutation
+        # (Fleet Law 7): the snapshot shares the soak lock domain.
+        try:
+            with SoakLock(lock_path_for_db(args.db), role="backup"):
+                report=db.backup_to(args.output, overwrite=args.force)
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+        except (SoakLockError, FileExistsError, RuntimeError) as exc:
+            print(f"backup refused: {exc}")
             db.close()
             return 2
     elif args.command=="db-integrity": print(db.integrity())

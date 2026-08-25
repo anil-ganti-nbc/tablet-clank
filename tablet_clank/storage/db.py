@@ -1,3 +1,5 @@
+import hashlib
+import os
 import sqlite3
 from pathlib import Path
 
@@ -25,4 +27,40 @@ class Database:
             self.conn.execute("INSERT INTO schema_migrations VALUES (1, datetime('now'))")
         self.conn.commit()
     def integrity(self): return self.conn.execute("PRAGMA integrity_check").fetchone()[0]
+    def backup_to(self, target, overwrite=False):
+        """SQLite-safe recovery point (DATA_SURVIVABILITY Layer A).
+
+        Uses the SQLite online backup API (WAL-safe; never a filesystem
+        copy of a live WAL database), writes via `<target>.partial` +
+        atomic rename so a killed process cannot leave a torn snapshot,
+        then verifies the result (integrity_check + size + SHA-256) before
+        it is called a backup. Refuses to silently destroy an existing
+        recovery point unless overwrite=True."""
+        target = Path(target)
+        if target.exists() and not overwrite:
+            raise FileExistsError(f"backup target already exists (refusing to overwrite a recovery point): {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_name(target.name + ".partial")
+        if partial.exists(): partial.unlink()
+        dest = sqlite3.connect(str(partial))
+        try:
+            with dest: self.conn.backup(dest)
+        finally:
+            dest.close()
+        check = sqlite3.connect(str(partial))
+        try:
+            result = check.execute("PRAGMA integrity_check").fetchone()[0]
+        finally:
+            check.close()
+        if result != "ok":
+            partial.unlink(missing_ok=True)
+            raise RuntimeError(f"backup failed integrity_check: {result}")
+        os.replace(partial, target)
+        data = target.read_bytes()
+        return {
+            "path": str(target), "integrity_check": result,
+            "size_bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "schema_version": self.conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0],
+        }
     def close(self): self.conn.close()

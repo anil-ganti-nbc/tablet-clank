@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -40,6 +41,43 @@ class SoakLockError(RuntimeError):
     pass
 
 
+def _pid_alive(pid: int) -> bool | None:
+    """Return True if process exists, False if not, None if unknown.
+
+    Windows MUST NOT use os.kill(pid, 0): os.kill maps every non-CTRL
+    signal to TerminateProcess, so a liveness probe against a live owner
+    silently terminates it (self-termination when probing our own PID).
+    The OpenProcess probe mirrors feature-phone-clank core/run_lock.py.
+    """
+    if pid <= 0:
+        return False
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            SYNCHRONIZE = 0x00100000
+            handle = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+            if handle:
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return True
+            # ERROR_INVALID_PARAMETER (87) usually means PID does not exist
+            err = ctypes.windll.kernel32.GetLastError()
+            if err in (87, 0):
+                return False
+            return None
+        except Exception:
+            return None
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists but not owned by us
+    except Exception:
+        return None
+
+
 class SoakLock:
     def __init__(self, path: str | Path, role: str = "soak"):
         self.path = Path(path)
@@ -59,27 +97,16 @@ class SoakLock:
             pid = existing.get("pid")
             if not isinstance(pid, int) or pid <= 0:
                 raise SoakLockError(f"lock exists with unknown owner: {self.path}") from exc
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
+            alive = _pid_alive(pid)
+            if alive is False:
                 try:
                     self.path.unlink()
                 except OSError as unlink_exc:
                     raise SoakLockError(f"stale lock detected but cannot remove it: {self.path}") from unlink_exc
                 return self.acquire()
-            except PermissionError as alive_exc:
-                raise SoakLockError(f"lock owner liveness cannot be established for PID {pid}") from alive_exc
-            except OSError as alive_exc:
-                # Windows commonly reports a definitely nonexistent PID as ERROR_INVALID_PARAMETER.
-                if getattr(alive_exc, "winerror", None) == 87:
-                    try:
-                        self.path.unlink()
-                    except OSError as unlink_exc:
-                        raise SoakLockError(f"stale lock detected but cannot remove it: {self.path}") from unlink_exc
-                    return self.acquire()
-                raise SoakLockError(f"lock owner liveness cannot be established for PID {pid}") from alive_exc
-            else:
-                raise SoakLockError(f"active soak lock held by PID {pid}: {self.path}") from exc
+            if alive is None:
+                raise SoakLockError(f"lock owner liveness cannot be established for PID {pid}")
+            raise SoakLockError(f"active soak lock held by PID {pid}: {self.path}") from exc
         os.write(fd, json.dumps(metadata, sort_keys=True).encode("utf-8"))
         os.close(fd)
         self.acquired = True

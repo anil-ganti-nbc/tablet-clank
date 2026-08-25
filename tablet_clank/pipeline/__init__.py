@@ -48,5 +48,10 @@ def process(db, collector, fixture_mode=False):
         result.status="success"
     except Exception as exc:
         result.status="failed"; result.error=str(exc)
+        # Health honesty (Fleet Law 3): the healthy-streak counter must not
+        # survive a failed run — a monotonic counter would keep reporting
+        # pre-outage health forever. Zero accepted candidates and transport
+        # failures both land here.
+        db.conn.execute("UPDATE source_state SET consecutive_healthy_runs=0 WHERE source_id=?", (source.id,))
     db.conn.execute("UPDATE collector_runs SET finished_at=?,status=?,raw_count=?,validated_count=?,rejected_count=?,accepted_count=?,new_count=?,updated_count=?,resighted_count=?,error=? WHERE id=?", (utcnow(),result.status,result.raw_count,result.validated_count,result.rejected_count,result.accepted_count,result.new_count,result.updated_count,result.resighted_count,result.error,result.run_id)); db.conn.commit()
     return result

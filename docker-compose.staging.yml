@@ -1,0 +1,21 @@
+# STAGING / SOAK ONLY — one-shot invocation; an external scheduler decides
+# cadence. No production compose file exists yet (Phase 0 promotion freeze).
+# Runtime state lives exclusively in the named volume, never in the tree.
+services:
+  tablet-clank:
+    build:
+      context: .
+      args:
+        GIT_REVISION: ${GIT_REVISION:-unknown}
+    image: tablet-clank:${IMAGE_TAG:-local}
+    user: "10001:10001"
+    restart: "no"
+    ports: []
+    environment:
+      TABLET_CLANK_SOURCE_REVISION: ${GIT_REVISION:-unknown}
+    volumes:
+      - tablet_clank_staging_data:/app/data
+    command: ["production", "--db", "/app/data/tablet_clank.db"]
+
+volumes:
+  tablet_clank_staging_data:
