@@ -374,3 +374,43 @@ No browser automation, private API, access-control bypass, retailer scraping, or
 `apple_in_sitemap` was the original Apple discovery experiment. Its pre-fix runs mechanically accepted 23 navigation/category/service-like identities and resighted them, but the stable-identifier correction demonstrated that the source did not expose a defensible individual-tablet identity signal: the post-fix live run returned 372 raw links, 0 accepted candidates and 372 rejected candidates. The historical products, observations, rejected candidates, runs and 48 Apple correction events remain preserved in the canonical database.
 
 The source has no unique practical runtime capability that is unavailable from the working Apple US/IN Store iPad Pro configuration sources. It is therefore **RETIRED_FROM_RUNTIME**, represented by registry state `DISABLED`, and excluded from the runtime/soak selection rule (`state == EXPERIMENTAL`). This is a runtime retirement, not historical data deletion or reinterpretation.
+
+---
+
+## Wave 2 (2026-08-27) — live re-verification of Tier A–C candidates
+
+All probes performed 2026-08-27 with a plain browser User-Agent HTTP client,
+no JS engine, no credentials, no access-control bypass; bounded urllib
+fetches of first-party surfaces only. Historical findings above this section
+are preserved unchanged.
+
+### Live result matrix
+
+| Candidate | Surface | Live behaviour | Verdict |
+|---|---|---|---|
+| honor UK storefront | https://www.honor.com/uk/tablets/ | HTTP 200, **server-rendered**, 24 product hrefs incl. current-generation `honor-magicpad-3`, `honor-magicpad-4`, `honor-pad-10`, `honor-pad-v9`; same infra as the production-approved CN collectors | IMPLEMENT_NOW |
+| Lenovo PSREF | psref.lenovo.com (+ asset bundles) | Vite SPA shell (~5 KB HTML); probed JS bundles contain no discoverable stable data API (`/sys`//api grep empty); search-API guesses 404 | UNRELIABLE — unattended stream needs undocumented endpoints or full browser automation |
+| Lenovo storefront sitemaps | lenovo.com/sitemap.xml -> 93 country children; us-en parsed | 571 URLs, **0 tablet product pages** (categories/glossary only) | REJECT |
+| Xiaomi Mi Mall CN/global | mi.com pad gateways | ~2.9 KB JS shells; no SSR products, no stable public SKU feed found | PROMISING_DEFER |
+| Xiaomi official spec DB | www.miui.com/specs/list.php | 200 with device text but list page does not link per-device pages (0 parseable catalogue anchors) | UNRELIABLE as change surface |
+| Xiaomi newsroom feeds | blog.mi.com/feed etc. | Resolves to SPA fallback (42 KB), zero `<item>` entries | CORROBORATION_ONLY, nothing ingestible today |
+| Huawei consumer listing | consumer.huawei.com/en/tablets/ | 223 KB fully client-rendered: no product anchors, no `__INITIAL_STATE__`; CDC API guess 404 | REJECT for unattended first-party collection |
+| Huawei vmall store | sale.vmall.com/pad.html | No server-rendered pad titles in probe | PROMISING_DEFER |
+| Samsung US all-tablets storefront | samsung.com/us/tablets/all-tablets/ | Fully client-side in probe (single SSR buy-link) | REJECT |
+| Samsung US top_sitemap supplement | top_sitemap.xml (full 3.1 MB fetch) | Hreflang-bloated legacy index: 291 URLs, **6 tablet URLs total, newest SKU SM-T837VZKA (2018-era)** | REJECT — supplements nothing |
+| OnePlus tablets | oneplus.com | Product page lacks `__NEXT_DATA__`; category URL 404 | REJECT |
+| OPPO / Vivo global | oppo.com / vivo.com | JS shells, 0-1 product links | REJECT |
+| Amazon Fire | amazon.com | Robots/sitemap posture unfavourable; ToS-risky scraping | REJECT by policy |
+
+### Implemented this wave
+
+**honor_uk_tablets** — see SOURCE_INVENTORY.md. Live snapshot 2026-08-27:
+23 products accepted at baseline creating **0 events**; immediate re-sight:
+23 identical identities, 0 duplicates, 0 events; db integrity ok. Latency
+~0.5 s, no JS dependency.
+
+### Remaining Tier A gaps after Wave 2
+
+Lenovo, Xiaomi and Huawei all still lack an unattended first-party stream.
+Blockers are structural (JS-only surfaces / undiscoverable stable APIs),
+not cosmetic. Recommended next actions documented in PROJECT_STATE.md.

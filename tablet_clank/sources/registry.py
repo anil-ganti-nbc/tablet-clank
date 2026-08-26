@@ -14,6 +14,7 @@ SOURCES = {
  "honor_cn_tablets_catalogue": Source("honor_cn_tablets_catalogue", "Honor", "CN", "Honor China tablet catalogue", "https://www.honor.com/cn/tablets/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_cn_tablets_catalogue.json")),
  "honor_cn_tablets_comparison": Source("honor_cn_tablets_comparison", "Honor", "CN", "Honor China tablet comparison", "https://www.honor.com/cn/tablets/comparison/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_cn_tablets_comparison.json")),
  "tcl_global_tablets": Source("tcl_global_tablets", "TCL", "GLOBAL", "TCL global tablet catalogue", "https://www.tcl.com/global/en/tablets", "EXPERIMENTAL", str(ROOT / "tests/fixtures/tcl_global_tablets.html")),
+ "honor_uk_tablets": Source("honor_uk_tablets", "Honor", "UK", "Honor UK tablet storefront catalogue", "https://www.honor.com/uk/tablets/", "EXPERIMENTAL", str(ROOT / "tests/fixtures/honor_uk_tablets.html")),
 }
 PRODUCTION_ALLOWLIST: tuple[str, ...] = (
     "honor_cn_tablets_catalogue",

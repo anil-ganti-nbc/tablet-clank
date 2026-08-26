@@ -57,3 +57,34 @@ Design and validate unattended production scheduling and internal event review f
 
 STOP_CONDITIONS
 Do not promote Apple or Samsung, enable alerts/external delivery, expand OEM scope, scrape retailers, add unattended scheduling, or refactor speculatively. Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
+
+---
+
+# Wave 2 status update (2026-08-27)
+
+## SOURCE
+Added `honor_uk_tablets` (Honor UK storefront, server-rendered HTML,
+`HonorUKTabletsCollector`). EXPERIMENTAL; in experimental runtime roster and
+frozen soak roster; NOT production-approved. Probe evidence: HTTP 200, 23
+products parsed with 0 rejections, ~0.5 s latency, no JS dependency.
+Baseline cycle accepted 23 creating **0 events** (FIRST_SEEN != NOVELTY);
+immediate re-sight produced 0 duplicates and 0 events; integrity ok.
+
+Tier A re-verification after fresh live probing: Lenovo PSREF confirmed
+JS-only with no discoverable stable data API and the official Lenovo sitemap
+contains zero tablet product pages; Xiaomi Mi Mall remains a JS shell with no
+stable public SKU feed (spec DB not a change surface); Huawei consumer/vmall
+surfaces are client-rendered. All recorded in SOURCE_RESEARCH.md Wave 2.
+
+## DATABASE / SCHEMA
+No schema change (schema v1). Authoritative datastore unchanged. No baseline
+resets; new source baselines only on first soak cycle against the live DB.
+
+## TESTS
+python -m pytest -q: passed=82 failed=0 skipped=0 (72 prior + 10 new).
+
+## NEXT_ACTION
+Deployment/soak handoff for `honor_uk_tablets` per the campaign report;
+24 h soak watch; reassess Xiaomi via its China store JSON surfaces if any are
+later proven publicly documented; reopen Huawei if vmall/consumer exposes a
+stable public catalogue API.

@@ -14,6 +14,7 @@ from typing import Callable
 
 from .collectors.apple_store import AppleStoreIPadProCollector
 from .collectors.honor_cn import HonorCNTabletsCollector
+from .collectors.honor_uk import HonorUKTabletsCollector
 from .collectors.html_catalogue import HtmlCatalogueCollector
 from .collectors.tcl_global import TCLGlobalTabletsCollector
 from .collectors.xml_sitemap import XmlSitemapCollector
@@ -25,6 +26,9 @@ from .storage.db import Database
 FROZEN_SOAK_SOURCE_IDS = frozenset({
     "apple_in_ipad_pro_store", "apple_us_ipad_pro_store", "samsung_us_sitemap",
     "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+    # Wave 2 (2026-08-27): regional-launch discovery source, deliberately
+    # added to the freeze as part of the reviewed expansion campaign.
+    "honor_uk_tablets",
 })
 
 
@@ -163,7 +167,8 @@ def readiness_check(db: Database) -> dict:
 
 
 def collector_for(source, fixture_mode: bool):
-    if source.manufacturer == "Honor": cls = HonorCNTabletsCollector
+    if "UK tablet storefront" in source.kind: cls = HonorUKTabletsCollector
+    elif source.manufacturer == "Honor": cls = HonorCNTabletsCollector
     elif source.manufacturer == "TCL": cls = TCLGlobalTabletsCollector
     elif "Apple Store" in source.kind: cls = AppleStoreIPadProCollector
     elif "XML" in source.kind: cls = XmlSitemapCollector

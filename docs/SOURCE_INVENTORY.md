@@ -27,3 +27,18 @@ Expansion-wave runtime additions:
 | TCL | `tcl_global_tablets` | GLOBAL | Global HTML tablet catalogue | `TCLGlobalTabletsCollector` | EXPERIMENTAL | Complete; 12/12 soak + 1 production cycle, all 24/24/0/24 | **Production-approved (Wave 1)** | 12-cycle soak + controlled production run all healthy; 0 events | Configuration/global equivalence unresolved |
 
 Honor and TCL completed the bounded 12-cycle experimental soak (2026-08-12/13, 12/12 SUCCESS, 0 events, 0 duplicates) and are now production-approved as of Promotion Wave 1 (2026-08-17), verified by one controlled production collection cycle with identical healthy results. `apple_us_ipad_pro_store`, `apple_in_ipad_pro_store` and `samsung_us_sitemap` also completed the soak cleanly but remain experimental/not production-approved, pending a later hardening/review phase — they were deliberately excluded from Wave 1. `apple_in_sitemap` is retired from runtime while its history is preserved. Huawei, OnePlus, OPPO, RedMagic/Nubia, Asus, Acer and Vivo/iQOO remain parked after bounded reconnaissance; reopen only if stable public product-index/model-code infrastructure appears.
+
+---
+
+## Wave 2 addition (2026-08-27)
+
+| Honor | `honor_uk_tablets` | UK | Honor UK tablet storefront catalogue (server-rendered HTML) | `HonorUKTabletsCollector` | EXPERIMENTAL; live-validated probe 2026-08-27 (HTTP 200, 0.5s, no JS) | Not yet baselined in authoritative DB — first soak cycle will baseline silently | Disabled; not allowlisted (`PRODUCTION_ALLOWLIST` unchanged) | Baseline probe: 23/23/0/23 accepted, **0 events**; re-sight: 23 resighted, 0 duplicates, 0 events; integrity ok | Slug identity (`honor.com` product slug); CN-lineage mapping unresolved and deliberately not fabricated |
+
+Registered in `SOURCES`, included in experimental runtime roster via
+`runtime_source_ids()` and the frozen soak roster (`FROZEN_SOAK_SOURCE_IDS`,
+soak.py). Excluded from production. Contamination tripwire: current-generation
+`honor-magicpad-*` anchor family required so a broken/partial page fails
+honest instead of fabricating a catalogue collapse.
+
+All other Wave 2 candidates were probed live on 2026-08-27 and rejected or
+deferred with reasons recorded in SOURCE_RESEARCH.md (Wave 2 section).

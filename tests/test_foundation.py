@@ -244,6 +244,7 @@ def test_healthy_experimental_sources_remain_runtime_selectable():
     assert selected == {
         "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+        "honor_uk_tablets",
     }
 
 def test_soak_roster_resolves_exactly_and_rejects_drift(monkeypatch):
@@ -350,7 +351,7 @@ def test_soak_cycle_isolates_source_failure_and_reports_partial_failure(monkeypa
         report = soak.run_cycle(db, 1, fixture_mode=True)
         assert calls == sorted(soak.FROZEN_SOAK_SOURCE_IDS)
         assert report["status"] == "PARTIAL_FAILURE"
-        assert len(report["sources"]) == 6
+        assert len(report["sources"]) == 7
         db.close()
 
 def test_soak_cycle_aborts_on_integrity_or_duplicate_failure(monkeypatch):
@@ -429,6 +430,7 @@ def test_production_selection_cannot_accidentally_include_arbitrary_experimental
     assert production_ids < experimental_ids
     assert experimental_ids - production_ids == {
         "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
+        "honor_uk_tablets",
     }
 
 def test_honor_catalogue_is_production_selectable():
