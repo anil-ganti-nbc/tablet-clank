@@ -1,13 +1,8 @@
 import argparse
 import json
-from .collectors.html_catalogue import HtmlCatalogueCollector
-from .collectors.xml_sitemap import XmlSitemapCollector
-from .collectors.apple_store import AppleStoreIPadProCollector
-from .collectors.honor_cn import HonorCNTabletsCollector
-from .collectors.tcl_global import TCLGlobalTabletsCollector
 from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST, runtime_source_ids, production_source_ids
 from .storage.db import Database
-from .soak import SoakLock, SoakLockError, lock_path_for_db, readiness_check, run_bounded
+from .soak import SoakLock, SoakLockError, lock_path_for_db, readiness_check, run_bounded, collector_for
 from .production import readiness_check as production_readiness_check, run_production
 from .pipeline import process
 
@@ -31,11 +26,12 @@ def main(argv=None):
                 if sid not in SOURCES: parser.error(f"unknown source: {sid}")
                 s=SOURCES[sid]
                 if s.state != "EXPERIMENTAL": parser.error(f"source is disabled: {sid}")
-                if s.manufacturer == "Honor": collector_class = HonorCNTabletsCollector
-                elif s.manufacturer == "TCL": collector_class = TCLGlobalTabletsCollector
-                elif "Apple Store" in s.kind: collector_class = AppleStoreIPadProCollector
-                else: collector_class = XmlSitemapCollector if "XML" in s.kind else HtmlCatalogueCollector
-                result=process(db,collector_class(s,fixture_mode=not args.live),fixture_mode=not args.live)
+                # Single routing authority: soak.collector_for. The CLI must
+                # not keep a second collector table — that is exactly how
+                # honor_uk_tablets silently fell through to the wrong
+                # collector class during Wave 2 deployment (failed honestly,
+                # nothing persisted).
+                result=process(db,collector_for(s,fixture_mode=not args.live),fixture_mode=not args.live)
                 print(result)
     elif args.command=="soak":
         try:
