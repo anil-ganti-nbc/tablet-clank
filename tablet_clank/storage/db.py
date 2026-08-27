@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, manufacturer TEXT N
 CREATE TABLE IF NOT EXISTS observations (id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id), source_id TEXT NOT NULL REFERENCES sources(id), url TEXT NOT NULL, observed_at TEXT NOT NULL, raw_values TEXT NOT NULL, normalized_values TEXT NOT NULL, collector TEXT NOT NULL, UNIQUE(product_id, source_id, observed_at));
 CREATE TABLE IF NOT EXISTS collector_runs (id INTEGER PRIMARY KEY, source_id TEXT NOT NULL REFERENCES sources(id), started_at TEXT NOT NULL, finished_at TEXT, status TEXT NOT NULL, raw_count INTEGER NOT NULL DEFAULT 0, validated_count INTEGER NOT NULL DEFAULT 0, rejected_count INTEGER NOT NULL DEFAULT 0, accepted_count INTEGER NOT NULL DEFAULT 0, new_count INTEGER NOT NULL DEFAULT 0, updated_count INTEGER NOT NULL DEFAULT 0, resighted_count INTEGER NOT NULL DEFAULT 0, error TEXT);
 CREATE TABLE IF NOT EXISTS rejected_candidates (id INTEGER PRIMARY KEY, run_id INTEGER NOT NULL REFERENCES collector_runs(id), url TEXT NOT NULL, title TEXT NOT NULL, reason TEXT NOT NULL, raw_values TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS change_events (id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id), source_id TEXT NOT NULL REFERENCES sources(id), event_type TEXT NOT NULL, old_value TEXT, new_value TEXT, evidence_url TEXT NOT NULL, observed_at TEXT NOT NULL, confidence REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS change_events (id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id), source_id TEXT NOT NULL REFERENCES sources(id), event_type TEXT NOT NULL, old_value TEXT, new_value TEXT, evidence_url TEXT NOT NULL, observed_at TEXT NOT NULL, confidence REAL NOT NULL, run_id INTEGER REFERENCES collector_runs(id));
 CREATE TABLE IF NOT EXISTS source_state (source_id TEXT PRIMARY KEY REFERENCES sources(id), baseline_complete INTEGER NOT NULL DEFAULT 0, last_healthy_run_id INTEGER, consecutive_healthy_runs INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_products_manufacturer ON products(manufacturer);
 CREATE INDEX IF NOT EXISTS idx_observations_source ON observations(source_id);
@@ -25,6 +25,14 @@ class Database:
         self.conn.executescript(SCHEMA)
         if not self.conn.execute("SELECT 1 FROM schema_migrations WHERE version=1").fetchone():
             self.conn.execute("INSERT INTO schema_migrations VALUES (1, datetime('now'))")
+        # Migration 2: change_events.run_id (provenance for QC archiving).
+        # CREATE TABLE IF NOT EXISTS above only creates the column on a
+        # brand-new table, so an older DB needs an explicit ALTER TABLE.
+        columns = {row[1] for row in self.conn.execute("PRAGMA table_info(change_events)")}
+        if "run_id" not in columns:
+            self.conn.execute("ALTER TABLE change_events ADD COLUMN run_id INTEGER REFERENCES collector_runs(id)")
+        if not self.conn.execute("SELECT 1 FROM schema_migrations WHERE version=2").fetchone():
+            self.conn.execute("INSERT INTO schema_migrations VALUES (2, datetime('now'))")
         self.conn.commit()
     def integrity(self): return self.conn.execute("PRAGMA integrity_check").fetchone()[0]
     def backup_to(self, target, overwrite=False):

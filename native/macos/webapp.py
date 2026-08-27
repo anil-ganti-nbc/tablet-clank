@@ -33,13 +33,16 @@ from tablet_clank.collectors.html_catalogue import HtmlCatalogueCollector  # noq
 from tablet_clank.collectors.tcl_global import TCLGlobalTabletsCollector  # noqa: E402
 from tablet_clank.collectors.xml_sitemap import XmlSitemapCollector  # noqa: E402
 from tablet_clank.pipeline import process  # noqa: E402
+from tablet_clank.production import run_production  # noqa: E402
 from tablet_clank.soak import SoakLock, SoakLockError, lock_path_for_db  # noqa: E402
 from tablet_clank.sources.registry import SOURCES, runtime_source_ids  # noqa: E402
 from tablet_clank.storage.db import Database  # noqa: E402
+from tablet_clank.storage.qc_archive import QC_DECISIONS, AlreadyDecided, qc_path_for_db  # noqa: E402
 
 APP_NAME = "Tablet Clank"
 
 PRODUCT_DETAIL_RE = re.compile(r"^/products/(\d+)$")
+QUEUE_ITEM_RE = re.compile(r"^/queue/(\d+)$")
 
 
 def _collector_class(source):
@@ -53,6 +56,8 @@ def _collector_class(source):
 
 
 def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
+    qc_path = qc_path_for_db(db_path)
+
     def topbar():
         db = Database(str(db_path))
         try:
@@ -77,6 +82,21 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                     return
                 if path in ("/", "/overview"):
                     self._page("overview", "Overview", dash_render.render_overview(dash_data.overview(db_path)))
+                    return
+                if path == "/queue":
+                    self._page("queue", "Active Queue", dash_render.render_queue(dash_data.active_queue(db_path, qc_path)))
+                    return
+                queue_match = QUEUE_ITEM_RE.match(path)
+                if queue_match:
+                    item = dash_data.queue_item(db_path, qc_path, int(queue_match.group(1)))
+                    if item is None:
+                        self.send_response(404)
+                        self.end_headers()
+                        return
+                    self._page("queue", f"Event #{queue_match.group(1)}", dash_render.render_queue_item(item))
+                    return
+                if path == "/qc/recent":
+                    self._page("qc-recent", "Recently QCed", dash_render.render_qc_recent(dash_data.qc_recent(qc_path)))
                     return
                 if path == "/discoveries":
                     self._page("discoveries", "Latest Discoveries", dash_render.render_discoveries(dash_data.latest_discoveries(db_path)))
@@ -131,11 +151,19 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
         # --------------------------------------------------------- POST
 
         def do_POST(self):
-            if not self.path.startswith("/collect"):
+            path, _, query_str = self.path.partition("?")
+            query = parse_qs(query_str)
+
+            if path == "/qc":
+                self._handle_qc(query)
+                return
+            if path == "/collect/all":
+                self._handle_collect_all()
+                return
+            if path != "/collect":
                 self.send_response(404)
                 self.end_headers()
                 return
-            query = parse_qs(self.path.partition("?")[2])
             source_id = (query.get("source") or [""])[0]
             if source_id not in runtime_source_ids():
                 self._send_json(400, {"error": "unknown_or_disabled_source", "source": source_id})
@@ -168,6 +196,40 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                 self._send_json(409, {"error": "locked", "detail": str(exc)})
             except Exception as exc:  # defensive: never crash the server on a bad cycle
                 self._send_json(500, {"error": "collect_failed", "detail": str(exc), "trace": traceback.format_exc()})
+
+        # ------------------------------------------------------- QC / run-all
+
+        def _handle_qc(self, query: dict):
+            event_id_raw = (query.get("event_id") or [""])[0]
+            decision = (query.get("decision") or [""])[0]
+            if not event_id_raw.isdigit():
+                self._send_json(400, {"error": "invalid_event_id"})
+                return
+            if decision not in QC_DECISIONS:
+                self._send_json(400, {"error": "unknown_decision", "decision": decision})
+                return
+            try:
+                snapshot = dash_data.submit_qc(db_path, qc_path, int(event_id_raw), decision)
+            except AlreadyDecided as exc:
+                self._send_json(409, {"error": "already_decided", "detail": str(exc)})
+                return
+            except Exception as exc:
+                self._send_json(500, {"error": "qc_failed", "detail": str(exc)})
+                return
+            if snapshot is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            self._send_json(200, {"event_id": int(event_id_raw), "decision": decision})
+
+        def _handle_collect_all(self):
+            try:
+                report = run_production(str(db_path))
+                self._send_json(200, report)
+            except SoakLockError as exc:
+                self._send_json(409, {"error": "locked", "detail": str(exc)})
+            except Exception as exc:  # defensive: never crash the server on a bad cycle
+                self._send_json(500, {"error": "run_all_failed", "detail": str(exc), "trace": traceback.format_exc()})
 
         # ------------------------------------------------------- helpers
 

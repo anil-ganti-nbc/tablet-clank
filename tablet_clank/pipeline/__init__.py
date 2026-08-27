@@ -29,7 +29,7 @@ def process(db, collector, fixture_mode=False):
                     repaired = db.conn.execute("SELECT 1 FROM products WHERE id<>? AND manufacturer=? AND region=? AND sku=? LIMIT 1", (pid, product.manufacturer, product.region, product.sku)).fetchone()
                     if repaired:
                         event_type = "identity_correction"
-                if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,new_value,evidence_url,observed_at,confidence) VALUES (?,?,?,?,?,?,?)", (pid,source.id,event_type,product.name,product.url,product.observed_at,.85))
+                if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,new_value,evidence_url,observed_at,confidence,run_id) VALUES (?,?,?,?,?,?,?,?)", (pid,source.id,event_type,product.name,product.url,product.observed_at,.85,result.run_id))
             else:
                 pid=row["id"]; result.resighted_count += 1
                 changed=[]
@@ -37,7 +37,7 @@ def process(db, collector, fixture_mode=False):
                     if row[field] != getattr(product,field) and getattr(product,field) is not None: changed.append((field,row[field],getattr(product,field)))
                 for field, old, new in changed:
                     result.updated_count += 1
-                    if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,old_value,new_value,evidence_url,observed_at,confidence) VALUES (?,?,?,?,?,?,?,?)", (pid,source.id,"spec_change",str(old),str(new),product.url,product.observed_at,.8))
+                    if baseline and baseline[0]: db.conn.execute("INSERT INTO change_events(product_id,source_id,event_type,old_value,new_value,evidence_url,observed_at,confidence,run_id) VALUES (?,?,?,?,?,?,?,?,?)", (pid,source.id,"spec_change",str(old),str(new),product.url,product.observed_at,.8,result.run_id))
                 db.conn.execute("UPDATE products SET last_seen=?, name=? WHERE id=?", (product.observed_at, product.name, pid))
             db.conn.execute("INSERT OR IGNORE INTO observations(product_id,source_id,url,observed_at,raw_values,normalized_values,collector) VALUES (?,?,?,?,?,?,?)", (pid,source.id,product.url,product.observed_at,json.dumps(product.raw_values),json.dumps(product.__dict__),collector.__class__.__name__))
             result.accepted_count += 1

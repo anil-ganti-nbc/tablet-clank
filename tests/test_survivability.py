@@ -55,7 +55,8 @@ def test_backup_creates_verified_snapshot(tmp_path: Path):
         report = db.backup_to(target)
         assert report["integrity_check"] == "ok"
         assert report["size_bytes"] > 0 and len(report["sha256"]) == 64
-        assert report["schema_version"] == 1
+        # Schema version 2 added change_events.run_id for QC archive provenance.
+        assert report["schema_version"] == 2
     finally:
         db.close()
 

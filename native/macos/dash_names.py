@@ -32,3 +32,15 @@ EVENT_TYPE_LABELS = {
 
 def event_type_label(event_type: str) -> str:
     return EVENT_TYPE_LABELS.get(event_type, event_type)
+
+
+QC_DECISION_LABELS = {
+    "USEFUL": "Useful",
+    "NOT_USEFUL": "Not useful",
+    "FALSE_POSITIVE": "False positive",
+    "OUT_OF_STOCK": "Out of stock",
+}
+
+
+def qc_decision_label(decision: str) -> str:
+    return QC_DECISION_LABELS.get(decision, decision)

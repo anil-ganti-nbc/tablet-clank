@@ -244,6 +244,97 @@ def run_history(db_path, limit: int = 200) -> list[dict]:
         db.close()
 
 
+def _event_snapshot(row) -> dict:
+    """Build the full snapshot dict qc_archive.decide() expects, preserving
+    original identifiers (event id, run id, source id) -- never inventing
+    new ones."""
+    return {
+        "event_id": row["id"],
+        "run_id": row["run_id"] if "run_id" in row.keys() else None,
+        "product_id": row["product_id"],
+        "source_id": row["source_id"],
+        "event_type": row["event_type"],
+        "manufacturer": row["manufacturer"],
+        "product_name": row["name"],
+        "model_number": row["model_number"] if "model_number" in row.keys() else None,
+        "region": row["product_region"],
+        "old_value": row["old_value"],
+        "new_value": row["new_value"],
+        "evidence_url": row["evidence_url"],
+        "event_observed_at": row["observed_at"],
+    }
+
+
+def active_queue(db_path, qc_path) -> dict:
+    """Active lead/event queue: change_events not yet QC'd, most recent
+    first. A QC decision removes an event from this view immediately because
+    this is a read-side filter against the QC archive's ledger, computed
+    fresh on every call -- never a separate cleanup step."""
+    from tablet_clank.storage.qc_archive import QCArchive
+
+    archive = QCArchive(qc_path)
+    decided_ids = archive.decided_event_ids()
+    db = _open(db_path)
+    try:
+        rows = db.conn.execute(
+            "SELECT ce.*, p.manufacturer, p.name, p.model_number, p.sku, p.region AS product_region, "
+            "p.variant, p.connectivity, p.ram_gb, p.storage_gb, p.colour, p.processor, p.display_size_in, p.os "
+            "FROM change_events ce JOIN products p ON p.id = ce.product_id "
+            "ORDER BY ce.id DESC"
+        ).fetchall()
+        events = [dict(r) for r in rows if r["id"] not in decided_ids]
+        return {"events": events, "total_events": len(rows), "decided_count": len(decided_ids)}
+    finally:
+        db.close()
+
+
+def queue_item(db_path, qc_path, event_id: int):
+    db = _open(db_path)
+    try:
+        row = db.conn.execute(
+            "SELECT ce.*, p.manufacturer, p.name, p.model_number, p.sku, p.region AS product_region, "
+            "p.variant, p.connectivity, p.ram_gb, p.storage_gb, p.colour, p.processor, p.display_size_in, "
+            "p.os, p.identity_key, p.first_seen, p.last_seen "
+            "FROM change_events ce JOIN products p ON p.id = ce.product_id WHERE ce.id=?",
+            (event_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        observations = db.conn.execute(
+            "SELECT * FROM observations WHERE product_id=? ORDER BY observed_at DESC", (row["product_id"],)
+        ).fetchall()
+        return {"event": dict(row), "observations": [dict(o) for o in observations]}
+    finally:
+        db.close()
+
+
+def submit_qc(db_path, qc_path, event_id: int, decision: str, note: str | None = None):
+    from tablet_clank.storage.qc_archive import QCArchive
+
+    db = _open(db_path)
+    try:
+        row = db.conn.execute(
+            "SELECT ce.*, p.manufacturer, p.name, p.model_number, p.region AS product_region "
+            "FROM change_events ce JOIN products p ON p.id = ce.product_id WHERE ce.id=?",
+            (event_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        snapshot = _event_snapshot(row)
+    finally:
+        db.close()
+    archive = QCArchive(qc_path)
+    archive.decide(snapshot, decision)
+    return snapshot
+
+
+def qc_recent(qc_path, limit: int = 50) -> list[dict]:
+    from tablet_clank.storage.qc_archive import QCArchive
+
+    archive = QCArchive(qc_path)
+    return [dict(r) for r in archive.recent(limit)]
+
+
 def about(db_path, build_revision: str) -> dict:
     db = _open(db_path)
     try:
