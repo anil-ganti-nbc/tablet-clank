@@ -132,8 +132,13 @@ class SoakLock:
         return False
 
 
+# Shared with the campaign runner so preflight duplicate checks can never
+# drift from the soak-path definition of a duplicate identity.
+_DUPLICATE_IDENTITY_SQL = "SELECT count(*) FROM (SELECT identity_key FROM products GROUP BY identity_key HAVING count(*) > 1)"
+
+
 def duplicate_identity_count(db: Database) -> int:
-    return db.conn.execute("SELECT count(*) FROM (SELECT identity_key FROM products GROUP BY identity_key HAVING count(*) > 1)").fetchone()[0]
+    return db.conn.execute(_DUPLICATE_IDENTITY_SQL).fetchone()[0]
 
 
 def resolve_soak_sources(db: Database) -> list:
@@ -181,9 +186,12 @@ def result_summary(result: RunResult, db: Database, event_ids_before: set[int]) 
     return {"source": result.source_id, "health": result.status, "raw": result.raw_count, "validated": result.validated_count, "rejected": result.rejected_count, "accepted": result.accepted_count, "new": result.new_count, "updated": result.updated_count, "resighted": result.resighted_count, "events": new_events, "error": result.error}
 
 
-def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False) -> dict:
+def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False, *, sources: list | None = None) -> dict:
     started = utcnow(); start_time = time.monotonic(); source_summaries = []
-    sources = resolve_soak_sources(db)
+    # sources=None keeps the frozen-roster contract; campaign-scoped callers
+    # pass their explicitly approved source list instead.
+    if sources is None:
+        sources = resolve_soak_sources(db)
     event_ids_before = {row[0] for row in db.conn.execute("SELECT id FROM change_events")}
     for source in sources:
         before = event_ids_before | {row[0] for row in db.conn.execute("SELECT id FROM change_events")}

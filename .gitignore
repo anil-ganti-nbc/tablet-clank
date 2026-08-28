@@ -8,6 +8,7 @@ var/*.db-shm
 var/*.sqlite*
 var/*.lock
 var/logs/
+var/campaigns/
 .env
 *.log
 *.dump

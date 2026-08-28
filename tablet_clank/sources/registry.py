@@ -22,6 +22,14 @@ PRODUCTION_ALLOWLIST: tuple[str, ...] = (
     "tcl_global_tablets",
 )
 
+# Campaign-soak approval is a separate, narrower gate than the frozen soak
+# roster: a source enters an isolated campaign only after an explicit
+# frozen-roster review. Campaign approval never implies production
+# eligibility — PRODUCTION_ALLOWLIST remains the only promotion path.
+CAMPAIGN_APPROVED_SOURCE_IDS: tuple[str, ...] = (
+    "honor_uk_tablets",
+)
+
 ALERTS_ENABLED: bool = False
 
 def runtime_source_ids() -> tuple[str, ...]:
@@ -31,5 +39,12 @@ def runtime_source_ids() -> tuple[str, ...]:
 def production_source_ids() -> tuple[str, ...]:
     """Single authority for production-eligible membership: explicit allowlist AND currently experimental."""
     return tuple(sorted(source_id for source_id in PRODUCTION_ALLOWLIST if source_id in SOURCES and SOURCES[source_id].state == "EXPERIMENTAL"))
+
+def campaign_approved_source_ids() -> tuple[str, ...]:
+    """Single authority for campaign-soak eligible membership: explicitly campaign-approved, still experimental, and NOT production-allowlisted."""
+    return tuple(sorted(
+        source_id for source_id in CAMPAIGN_APPROVED_SOURCE_IDS
+        if source_id in SOURCES and SOURCES[source_id].state == "EXPERIMENTAL" and source_id not in PRODUCTION_ALLOWLIST
+    ))
 
 def get_source(source_id): return SOURCES[source_id]

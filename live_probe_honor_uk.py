@@ -26,17 +26,26 @@ print(json.dumps({
 
 with tempfile.TemporaryDirectory() as d:
     db = Database(str(Path(d) / "honor_uk_probe.db"))
-    first = process(db, c)
-    second = process(db, c)
-    events = db.conn.execute("SELECT COUNT(*) FROM change_events").fetchone()[0]
-    print(json.dumps({
-        "baseline_cycle": {"status": first.status, "accepted": first.accepted_count,
-                           "new": first.new_count, "resighted": first.resighted_count},
-        "resight_cycle": {"status": second.status, "new": second.new_count,
-                          "resighted": second.resighted_count},
-        "change_events_total": events,
-        "integrity": db.integrity(),
-    }, indent=2))
+    try:
+        first = process(db, c)
+        second = process(db, c)
+        events = db.conn.execute("SELECT COUNT(*) FROM change_events").fetchone()[0]
+        soak_result = {
+            "baseline_cycle": {"status": first.status, "accepted": first.accepted_count,
+                               "new": first.new_count, "resighted": first.resighted_count},
+            "resight_cycle": {"status": second.status, "new": second.new_count,
+                              "resighted": second.resighted_count},
+            "change_events_total": events,
+            "integrity": db.integrity(),
+        }
+    finally:
+        # Windows: TemporaryDirectory cleanup fails with WinError 32 while a
+        # SQLite handle is still open, so the connection must be closed
+        # before the directory removal runs — otherwise the probe exits
+        # nonzero purely due to interpreter-time cleanup.
+        db.close()
+
+print(json.dumps(soak_result, indent=2))
 
 assert "honor_uk_tablets" not in PRODUCTION_ALLOWLIST
 assert "honor_uk_tablets" in runtime_source_ids()
