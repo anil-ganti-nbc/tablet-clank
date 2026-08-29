@@ -30,7 +30,9 @@ def test_honor_uk_registered_experimental_with_fixture():
     s = SOURCES["honor_uk_tablets"]
     assert s.manufacturer == "Honor" and s.region == "UK"
     assert s.state == "EXPERIMENTAL"
-    assert "honor_uk_tablets" not in PRODUCTION_ALLOWLIST
+    # Promotion Wave 3 (2026-08-29): production-approved after the isolated
+    # NAS campaign soak completed 12/12; registry identity unchanged.
+    assert "honor_uk_tablets" in PRODUCTION_ALLOWLIST
     assert s.fixture and Path(s.fixture).exists()
 
 
@@ -77,10 +79,10 @@ def test_honor_uk_baseline_silent_and_resight_clean(tmp_path):
     assert db.integrity() == "ok"
 
 
-def test_honor_uk_absent_from_allowlist_resolution():
+def test_honor_uk_present_in_allowlist_resolution():
     from tablet_clank.sources.registry import production_source_ids
     ids = production_source_ids()
-    assert "honor_uk_tablets" not in ids
+    assert "honor_uk_tablets" in ids
 
 
 def test_honor_uk_in_experimental_runtime_roster():

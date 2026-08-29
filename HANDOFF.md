@@ -52,11 +52,11 @@ Full source truth is in `docs/SOURCE_INVENTORY.md`. Broader reconnaissance is in
 
 ## Production State
 
-Production allowlist contains exactly `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets` (Promotion Wave 1, 2026-08-17). Production runs under a twice-daily systemd timer (`tablet-clank-production.timer`, 06:20/18:20 UTC) active since 2026-08-26 10:49Z (deploy artefacts from commit d2ab5ba deployed 2026-08-26 10:43Z); the same `python -m tablet_clank.cli production` path still runs on demand. Alerts are disabled (`ALERTS_ENABLED = False`); no Discord integration or destination is configured. Remaining experimental sources (Apple US/IN, Samsung) must not be promoted automatically; any future promotion remains a separate human-reviewed decision, same as this one.
+Production allowlist contains exactly `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets` (Promotion Wave 1, 2026-08-17) and `honor_uk_tablets` (Promotion Wave 3, 2026-08-29 — after the isolated NAS campaign `honor-uk-iso-nas-001` completed 12/12 live cycles SUCCESS with 0 events, 0 duplicates and a byte-identical canonical DB). **Execution is on-demand only** via `python -m tablet_clank.cli production`: the twice-daily systemd timer (`tablet-clank-production.timer`, 06:20/18:20 UTC) documented on 2026-08-26 was checked for on 2026-08-29 and does NOT exist on any host (NAS user+system units, WSL Ubuntu, Windows Task Scheduler; `deploy/systemd/` ships `.example` templates only). One controlled production cycle ran 2026-08-27 (3 sources) and the Wave 3 verification cycle ran 2026-08-29 (4 sources, all SUCCESS, all resights, 0 events). Alerts are disabled (`ALERTS_ENABLED = False`; the production readiness gate refuses to run if that changes); no Discord integration or destination is configured. Remaining experimental sources (Apple US/IN, Samsung) must not be promoted automatically; any future promotion remains a separate human-reviewed decision, same as this one.
 
 ## Test State
 
-Fresh checkpoint command: `python -m pytest -q -rA`. Current result: 43 passed, 0 failed, 0 skipped, 0 xfailed.
+Fresh checkpoint command: `python -m pytest -q`. Current result: 117 passed, 0 failed, 0 skipped (campaign runner + Wave 2/3 regressions included).
 
 ## Known Issues
 

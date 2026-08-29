@@ -407,6 +407,7 @@ def test_production_allowlist_contains_exactly_approved_sources():
     from tablet_clank.sources.registry import PRODUCTION_ALLOWLIST, production_source_ids
     assert set(PRODUCTION_ALLOWLIST) == {
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+        "honor_uk_tablets",
     }
     assert set(production_source_ids()) == set(PRODUCTION_ALLOWLIST)
 
@@ -430,7 +431,6 @@ def test_production_selection_cannot_accidentally_include_arbitrary_experimental
     assert production_ids < experimental_ids
     assert experimental_ids - production_ids == {
         "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
-        "honor_uk_tablets",
     }
 
 def test_honor_catalogue_is_production_selectable():
@@ -462,6 +462,7 @@ def test_production_cycle_preserves_baseline_semantics(tmp_path):
     assert first["status"] == "SUCCESS"
     assert {item["source"] for item in first["sources"]} == {
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
+        "honor_uk_tablets",
     }
     for item in first["sources"]:
         assert item["health"] == "success" and item["new"] > 0

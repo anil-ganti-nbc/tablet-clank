@@ -20,15 +20,19 @@ PRODUCTION_ALLOWLIST: tuple[str, ...] = (
     "honor_cn_tablets_catalogue",
     "honor_cn_tablets_comparison",
     "tcl_global_tablets",
+    # Promotion Wave 3 (2026-08-29): honor-uk-iso-nas-001 completed 12/12 live
+    # campaign cycles SUCCESS (0 events, 0 duplicates, canonical untouched).
+    "honor_uk_tablets",
 )
 
 # Campaign-soak approval is a separate, narrower gate than the frozen soak
 # roster: a source enters an isolated campaign only after an explicit
 # frozen-roster review. Campaign approval never implies production
 # eligibility — PRODUCTION_ALLOWLIST remains the only promotion path.
-CAMPAIGN_APPROVED_SOURCE_IDS: tuple[str, ...] = (
-    "honor_uk_tablets",
-)
+# Empty since 2026-08-29: honor_uk_tablets was promoted to production
+# (Wave 3), retiring its campaign approval; no other source is
+# campaign-approved.
+CAMPAIGN_APPROVED_SOURCE_IDS: tuple[str, ...] = ()
 
 ALERTS_ENABLED: bool = False
 

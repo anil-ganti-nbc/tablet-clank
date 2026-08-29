@@ -52,6 +52,17 @@ def _report_records(directory: Path) -> list[dict]:
     return [json.loads(line) for line in (directory / "soak.jsonl").read_text(encoding="utf-8").splitlines()]
 
 
+@pytest.fixture()
+def _campaign_approved_honor_uk(monkeypatch):
+    """No source is campaign-approved since the honor_uk promotion (Wave 3);
+    tests that exercise the post-approval preflight/runner path simulate an
+    approved source. Refusal-path tests stay unpatched on purpose."""
+    import tablet_clank.campaign as campaign_module
+    monkeypatch.setattr(
+        campaign_module, "campaign_approved_source_ids", lambda: ("honor_uk_tablets",)
+    )
+
+
 def test_build_manifest_pins_roster_hash_and_environment():
     from tablet_clank.campaign import build_manifest, campaign_roster_hash, current_environment
     manifest = build_manifest("honor-uk-test", ["honor_uk_tablets"], cycles=12, interval_seconds=7200)
@@ -107,7 +118,7 @@ def test_preflight_refuses_unapproved_sources(tmp_path):
         preflight_campaign(load_manifest(manifest_path))
 
 
-def test_preflight_refuses_roster_hash_drift(tmp_path, monkeypatch):
+def test_preflight_refuses_roster_hash_drift(tmp_path, monkeypatch, _campaign_approved_honor_uk):
     from dataclasses import replace
     import tablet_clank.campaign as campaign_module
     from tablet_clank.campaign import CampaignError, load_manifest, preflight_campaign
@@ -124,7 +135,7 @@ def test_preflight_refuses_roster_hash_drift(tmp_path, monkeypatch):
         preflight_campaign(load_manifest(manifest_path))
 
 
-def test_preflight_refuses_environment_mismatch(tmp_path):
+def test_preflight_refuses_environment_mismatch(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, load_manifest, preflight_campaign
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical),
@@ -133,14 +144,14 @@ def test_preflight_refuses_environment_mismatch(tmp_path):
         preflight_campaign(load_manifest(manifest_path))
 
 
-def test_preflight_refuses_missing_canonical_database(tmp_path):
+def test_preflight_refuses_missing_canonical_database(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, load_manifest, preflight_campaign
     manifest_path = _write_manifest(tmp_path, canonical_db=str(tmp_path / "does_not_exist.db"))
     with pytest.raises(CampaignError, match="canonical database unavailable"):
         preflight_campaign(load_manifest(manifest_path))
 
 
-def test_preflight_refuses_active_or_unreadable_canonical_lock_but_tolerates_stale(tmp_path, monkeypatch):
+def test_preflight_refuses_active_or_unreadable_canonical_lock_but_tolerates_stale(tmp_path, monkeypatch, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, load_manifest, preflight_campaign, _canonical_lock_state
     from tablet_clank.soak import lock_path_for_db
     import tablet_clank.soak as soak_module
@@ -162,7 +173,7 @@ def test_preflight_refuses_active_or_unreadable_canonical_lock_but_tolerates_sta
     assert lock_file.exists()
 
 
-def test_campaign_baseline_resight_is_immediate_and_canonical_stays_untouched(tmp_path):
+def test_campaign_baseline_resight_is_immediate_and_canonical_stays_untouched(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import run_campaign
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical), cycles=3)
@@ -194,7 +205,7 @@ def test_campaign_baseline_resight_is_immediate_and_canonical_stays_untouched(tm
         check.close()
 
 
-def test_campaign_resume_reuses_baseline_and_refuses_when_missing(tmp_path):
+def test_campaign_resume_reuses_baseline_and_refuses_when_missing(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, run_campaign
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical))
@@ -213,7 +224,7 @@ def test_campaign_resume_reuses_baseline_and_refuses_when_missing(tmp_path):
         run_campaign(manifest_path, fixture_mode=True, sleep=lambda seconds: None)
 
 
-def test_campaign_aborts_on_first_unhealthy_cycle(tmp_path, monkeypatch):
+def test_campaign_aborts_on_first_unhealthy_cycle(tmp_path, monkeypatch, _campaign_approved_honor_uk):
     import tablet_clank.campaign as campaign_module
     canonical = _make_canonical(tmp_path)
     for status in ("PARTIAL_FAILURE", "SOAK_ABORTED_DB_INTEGRITY"):
@@ -235,7 +246,7 @@ def test_campaign_aborts_on_first_unhealthy_cycle(tmp_path, monkeypatch):
         assert records[-1]["completed_cycles"] == 1
 
 
-def test_campaign_refusal_writes_refused_evidence_record(tmp_path):
+def test_campaign_refusal_writes_refused_evidence_record(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, run_campaign
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical), roster_hash="deadbeef")
@@ -259,7 +270,7 @@ def test_campaign_lock_conflict_refuses(tmp_path):
         run_campaign(manifest_path, fixture_mode=True, sleep=lambda seconds: None)
 
 
-def test_keyboard_interrupt_records_interruption(tmp_path):
+def test_keyboard_interrupt_records_interruption(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import run_campaign
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical), cycles=3)
@@ -277,15 +288,21 @@ def test_keyboard_interrupt_records_interruption(tmp_path):
     assert records[-1]["completed_cycles"] == 2
 
 
-def test_registry_campaign_roster_is_honor_uk_only_and_disjoint_from_production():
+def test_registry_campaign_roster_empty_after_honor_uk_promotion():
+    """Promotion Wave 3 (2026-08-29): honor_uk_tablets moved to
+    PRODUCTION_ALLOWLIST and its campaign approval was retired. A promoted
+    source must not remain campaign-eligible."""
     from tablet_clank.sources.registry import (
         CAMPAIGN_APPROVED_SOURCE_IDS,
         campaign_approved_source_ids,
         production_source_ids,
+        runtime_source_ids,
     )
-    assert set(CAMPAIGN_APPROVED_SOURCE_IDS) == {"honor_uk_tablets"}
-    assert campaign_approved_source_ids() == ("honor_uk_tablets",)
+    assert set(CAMPAIGN_APPROVED_SOURCE_IDS) == set()
+    assert campaign_approved_source_ids() == ()
+    assert "honor_uk_tablets" in production_source_ids()
     assert set(campaign_approved_source_ids()).isdisjoint(production_source_ids())
+    assert "honor_uk_tablets" in runtime_source_ids()
 
 
 def test_run_cycle_sources_override_isolates_from_frozen_roster(tmp_path):
@@ -300,7 +317,7 @@ def test_run_cycle_sources_override_isolates_from_frozen_roster(tmp_path):
         db.close()
 
 
-def test_cli_soak_campaign_init_check_run_and_refusal(tmp_path, capsys):
+def test_cli_soak_campaign_init_check_run_and_refusal(tmp_path, capsys, _campaign_approved_honor_uk):
     from tablet_clank import cli
     canonical = _make_canonical(tmp_path)
     manifest_path = tmp_path / "cli-campaign.json"

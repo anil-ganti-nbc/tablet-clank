@@ -2,28 +2,29 @@ PROJECT
 Tablet Clank
 
 PHASE
-Promotion Wave 1 complete: 12-cycle soak passed 12/12; Honor + TCL production-approved and controlled-production-verified
+Promotion Wave 3 complete: honor_uk_tablets production-approved after isolated NAS campaign soak 12/12; controlled production cycle verified with all four sources healthy
 
 PRODUCTION
-Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets; production timer active since 2026-08-26 10:49Z (twice daily 06:20/18:20 UTC; deploy artefacts from commit d2ab5ba deployed 2026-08-26 10:43Z, on-demand path unchanged); alerts disabled
+Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets, honor_uk_tablets (Wave 3, 2026-08-29); execution is ON-DEMAND ONLY via `python -m tablet_clank.cli production` — the twice-daily `tablet-clank-production.timer` documented 2026-08-26 was NOT found on any host (NAS user+system units, WSL Ubuntu, Windows Task Scheduler checked 2026-08-29; `deploy/systemd/` ships .example templates only); alerts disabled
 
 DATABASE
-var/tablet_clank.db; integrity ok; 225 products, 3254 observations, 108 runs, 1434 rejected candidates, 48 events; 48 identity_correction (all pre-soak), 0 duplicate identity keys
+var/tablet_clank.db; integrity ok; 179 products, 646 observations, 23 runs, 2 rejected candidates, 0 change_events (48 historical events live in the QC archive, var/tablet_clank_qc.db); 0 duplicate identity keys; pre-promotion backup var/backups/tablet_clank-pre-honoruk-promotion.db (sha256 169fe9e2…)
 
 SCHEMA
-1
+2
 
 TESTS
-python -m pytest -q -rA; passed=43 failed=0 skipped=0 xfailed=0
+python -m pytest -q; passed=117 failed=0 skipped=0
 
 SOURCES
 apple_in_sitemap=DISABLED/RETIRED, post-fix run failed closed 372/0/372/0; historical baseline untrusted; excluded from runtime/soak; not production eligible
 apple_us_ipad_pro_store=EXPERIMENTAL, post-soak, NOT production-approved; 18 total runs, 12 in-soak, all healthy; 24 historical identity_correction events
 apple_in_ipad_pro_store=EXPERIMENTAL, post-soak, NOT production-approved; 18 total runs, 12 in-soak, all healthy; 24 historical identity_correction events
 samsung_us_sitemap=EXPERIMENTAL, post-soak, NOT production-approved; 17 total runs, 12 in-soak, all healthy
-honor_cn_tablets_catalogue=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
-honor_cn_tablets_comparison=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
-tcl_global_tablets=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 1 controlled production cycle, all healthy, 0 events
+honor_cn_tablets_catalogue=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 2 controlled production cycles, all healthy, 0 events
+honor_cn_tablets_comparison=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 2 controlled production cycles, all healthy, 0 events
+tcl_global_tablets=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 1); 12/12 soak cycles + 2 controlled production cycles, all healthy, 0 events
+honor_uk_tablets=EXPERIMENTAL, PRODUCTION-APPROVED (Wave 3, 2026-08-29); isolated NAS campaign honor-uk-iso-nas-001 12/12 SUCCESS (0 events, 0 duplicates, canonical untouched) + 1 controlled production cycle healthy (32/24/25/23 accepted, all resights, 0 events); canonical baseline dates to 2026-08-27 Wave 2 validation; campaign approval retired on promotion
 
 SOAK_HISTORY
 2026-08-12T08:54:59Z to 2026-08-13T06:59:48Z (22h04m49s); 12/12 SUCCESS; 0 PARTIAL_FAILURE; 0 correctness failures; 0 soak-generated events; 0 duplicates; integrity ok throughout. Full evidence: var/logs/soak.jsonl. Soak service now permanently retired for the old 6-source roster (refuses to run: 3 of its sources are production-allowlisted).
