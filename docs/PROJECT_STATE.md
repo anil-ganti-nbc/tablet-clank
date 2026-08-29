@@ -5,7 +5,7 @@ PHASE
 Promotion Wave 3 complete: honor_uk_tablets production-approved after isolated NAS campaign soak 12/12; controlled production cycle verified with all four sources healthy
 
 PRODUCTION
-Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets, honor_uk_tablets (Wave 3, 2026-08-29); execution is ON-DEMAND ONLY via `python -m tablet_clank.cli production` — the twice-daily `tablet-clank-production.timer` documented 2026-08-26 was NOT found on any host (NAS user+system units, WSL Ubuntu, Windows Task Scheduler checked 2026-08-29; `deploy/systemd/` ships .example templates only); alerts disabled
+Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets, honor_uk_tablets (Wave 3, 2026-08-29); production scheduling IS live on the Hetzner fleet host: the twice-daily `tablet-clank-production.timer` (06:20/18:20 UTC) has been active since 2026-08-26 10:49:18Z (unit files deployed from commit d2ab5ba artefacts, merged 2026-08-26 10:43:26Z; re-verified running on 2026-08-29). The 2026-08-29 "timer not found" sweep covered NAS/WSL/Windows only and missed Hetzner. On-demand `python -m tablet_clank.cli production` unchanged. Hetzner's checkout (2bd8929) still runs the Wave-1 three-source allowlist; the Wave-3 honor_uk promotion is not deployed there yet; alerts disabled
 
 DATABASE
 var/tablet_clank.db; integrity ok; 179 products, 646 observations, 23 runs, 2 rejected candidates, 0 change_events (48 historical events live in the QC archive, var/tablet_clank_qc.db); 0 duplicate identity keys; pre-promotion backup var/backups/tablet_clank-pre-honoruk-promotion.db (sha256 169fe9e2…)
