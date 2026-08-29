@@ -52,7 +52,7 @@ Full source truth is in `docs/SOURCE_INVENTORY.md`. Broader reconnaissance is in
 
 ## Production State
 
-Production allowlist contains exactly `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets` (Promotion Wave 1, 2026-08-17). Production scheduling is absent — the production path runs on demand only (`python -m tablet_clank.cli production`), the same as manual collection; nothing is unattended. Alerts are disabled (`ALERTS_ENABLED = False`); no Discord integration or destination is configured. Remaining experimental sources (Apple US/IN, Samsung) must not be promoted automatically; any future promotion remains a separate human-reviewed decision, same as this one.
+Production allowlist contains exactly `honor_cn_tablets_catalogue`, `honor_cn_tablets_comparison`, `tcl_global_tablets` (Promotion Wave 1, 2026-08-17). Production runs under a twice-daily systemd timer (`tablet-clank-production.timer`, 06:20/18:20 UTC) active since 2026-08-26 10:49Z (deploy artefacts from commit d2ab5ba deployed 2026-08-26 10:43Z); the same `python -m tablet_clank.cli production` path still runs on demand. Alerts are disabled (`ALERTS_ENABLED = False`); no Discord integration or destination is configured. Remaining experimental sources (Apple US/IN, Samsung) must not be promoted automatically; any future promotion remains a separate human-reviewed decision, same as this one.
 
 ## Test State
 
@@ -89,11 +89,11 @@ Promotion Wave 1 is complete: Honor (catalogue + comparison) and TCL are product
 
 ## Next Recommended Step
 
-Design and validate unattended production scheduling and internal event review for the promoted Honor/TCL sources before enabling any external delivery.
+Unattended production scheduling is live (twice-daily systemd timer since 2026-08-26 10:49Z, commit d2ab5ba). Design and validate internal event review for the promoted Honor/TCL sources before enabling any external delivery.
 
 ## Do Not Do Yet
 
-Do not add manufacturers, expand regions, promote Apple or Samsung, enable alerts/external delivery, scrape retailers, add AI, build a dashboard, add unattended/recurring scheduling, or perform speculative architecture refactors. Do not delete historical false-positive evidence. Do not restart the old 6-source frozen soak (it now refuses to run by design, since 3 of its sources are production-allowlisted).
+Do not add manufacturers, expand regions, promote Apple or Samsung, enable alerts/external delivery, scrape retailers, add AI, build a dashboard, or perform speculative architecture refactors. (Unattended/recurring production scheduling was validated and enabled 2026-08-26 via commit d2ab5ba.) Do not delete historical false-positive evidence. Do not restart the old 6-source frozen soak (it now refuses to run by design, since 3 of its sources are production-allowlisted).
 
 ## Essential Commands
 

@@ -5,7 +5,7 @@ PHASE
 Promotion Wave 1 complete: 12-cycle soak passed 12/12; Honor + TCL production-approved and controlled-production-verified
 
 PRODUCTION
-Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets; scheduling absent (on-demand only); alerts disabled
+Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets; production timer active since 2026-08-26 10:49Z (twice daily 06:20/18:20 UTC; deploy artefacts from commit d2ab5ba deployed 2026-08-26 10:43Z, on-demand path unchanged); alerts disabled
 
 DATABASE
 var/tablet_clank.db; integrity ok; 225 products, 3254 observations, 108 runs, 1434 rejected candidates, 48 events; 48 identity_correction (all pre-soak), 0 duplicate identity keys
@@ -53,10 +53,10 @@ UNVERIFIED
 Long-term Apple Store markup stability, SKU-to-A-model mapping, production safety, global canonical unification, additional Samsung stability
 
 NEXT_ACTION
-Design and validate unattended production scheduling and internal event review for the promoted Honor/TCL sources before enabling any external delivery.
+Unattended production scheduling is live (twice-daily systemd timer since 2026-08-26 10:49Z, commit d2ab5ba). Design and validate internal event review for the promoted Honor/TCL sources before enabling any external delivery.
 
 STOP_CONDITIONS
-Do not promote Apple or Samsung, enable alerts/external delivery, expand OEM scope, scrape retailers, add unattended scheduling, or refactor speculatively. Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
+Do not promote Apple or Samsung, enable alerts/external delivery, expand OEM scope, scrape retailers, or refactor speculatively. (Unattended production scheduling was validated and enabled 2026-08-26 via commit d2ab5ba.) Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
 
 ---
 
