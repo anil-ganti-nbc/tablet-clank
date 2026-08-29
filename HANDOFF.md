@@ -112,3 +112,28 @@ python -m tablet_clank.cli production
 ## Continuation Protocol
 
 Before stopping: run tests; check database integrity if database code/state changed; update source inventory, architecture and known issues when applicable; update `docs/PROJECT_STATE.md`; set exactly one clear next action; update this file; then record Git HEAD and status. Do not leave essential state only in conversation.
+
+---
+
+## Campaign soak addendum (2026-08-29)
+
+Campaign-scoped isolated soaks are implemented in `tablet_clank/campaign.py`
+(manifest-driven: explicit approved source IDs, pinned roster hash + interpreter
+environment, canonical DB read-only preflight only, campaign-scoped lock, evidence
+JSONL with start/cycle/aborted/refused/interrupted/end records, abort on any
+non-SUCCESS cycle). CLI: `soak-campaign --manifest <path> [--init|--check|--live]`.
+The historical frozen-roster soak (`soak` / `soak --check`) is retained but refuses
+to start because the frozen roster overlaps `PRODUCTION_ALLOWLIST`.
+
+- `honor-uk-iso-001` (Windows): CLOSED — `OPERATOR_ABORTED_FOR_HOST_RELOCATION`
+  after 2 healthy cycles; preserved as supporting evidence only; not counted
+  toward NAS promotion evidence.
+- `honor-uk-iso-nas-001` (NAS `/volume2/clank/tablet-clank`, Docker container
+  `tablet-clank-honor-uk-iso-nas-001`, Python 3.12.14): COMPLETE — 12/12 SUCCESS
+  (2026-08-28 18:51Z → 2026-08-29 14:51Z). Cycle 1 baseline: 23 new, 0 events.
+  Cycles 2–12: 23 resighted, 0 new, 0 events. 0 duplicate identities, campaign
+  DB integrity ok in every cycle, canonical NAS DB byte-identical pre/post
+  (sha256 `169fe9e2…`), 0 notifications. Evidence: `state/logs/soak-honor-uk-iso-nas-001.jsonl`
+  plus pre/post canonical snapshots in the same directory.
+- Promotion of `honor_uk_tablets` to `PRODUCTION_ALLOWLIST` remains a separate,
+  explicit decision and has not been made.

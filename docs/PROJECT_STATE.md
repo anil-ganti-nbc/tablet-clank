@@ -88,3 +88,46 @@ Deployment/soak handoff for `honor_uk_tablets` per the campaign report;
 24 h soak watch; reassess Xiaomi via its China store JSON surfaces if any are
 later proven publicly documented; reopen Huawei if vmall/consumer exposes a
 stable public catalogue API.
+
+---
+
+# Campaign soak status update (2026-08-29)
+
+## CAMPAIGN RUNNER
+Implemented `tablet_clank/campaign.py`: manifest-driven, campaign-scoped, isolated soaks.
+Explicit source approval (`CAMPAIGN_APPROVED_SOURCE_IDS` in the registry), manifest-pinned
+roster hash and interpreter environment, canonical DB opened read-only (`mode=ro`) for
+preflight only, campaign-scoped lock, refusal/abort/interruption evidence records in a
+campaign JSONL, stricter abort semantics (any non-SUCCESS cycle aborts), baseline cycle
+followed by an immediate resight. `soak.run_cycle` gained a backward-compatible `sources`
+override (frozen-roster default unchanged); the duplicate-identity SQL is shared with the
+campaign preflight. CLI: `soak-campaign --init|--check|--live`. Tests: 117 passed,
+0 failed (100 prior + 17 campaign tests), verified on Windows (Python 3.14.0) and on the
+NAS inside the deployed image (Python 3.12.14).
+
+## WINDOWS CAMPAIGN honor-uk-iso-001 (CLOSED)
+`OPERATOR_ABORTED_FOR_HOST_RELOCATION` after 2 healthy live cycles (baseline 23 new /
+0 events; immediate resight 0 new / 0 events; 0 duplicates; integrity ok). No cycle failed;
+canonical DB proven byte-identical pre/post; evidence preserved under
+`var/campaigns/honor-uk-iso-001/` including `operator_abort.json`. Its 2 cycles are NOT
+counted toward the NAS promotion soak; retained as independent supporting evidence only.
+
+## NAS CAMPAIGN honor-uk-iso-nas-001 (COMPLETE — 12/12 SUCCESS)
+Relocated to the NAS (Anil_NAS, `/volume2/clank/tablet-clank`) and executed under Docker
+(container `tablet-clank-honor-uk-iso-nas-001`, image `tablet-clank:honor-uk-iso-nas-001`,
+`restart=no`), Python 3.12.14/linux. Manifest pins: sources `[honor_uk_tablets]`, cycles 12,
+interval 7200 s, immediate resight, roster hash `c008b65b…`, manifest sha256 `4c21c2be…`;
+live mode confirmed in the campaign_start record. Results at 7200 s cadence 2026-08-28
+18:51Z → 2026-08-29 14:51Z: cycle 1 baseline 23 raw / 23 accepted / 23 new / **0 events**;
+cycles 2–12 resight 23 / 0 new / **0 events**; **0 duplicate identities**; campaign DB
+integrity `ok` in every cycle (final: 23 products, 276 observations = 23×12, 12 collector
+runs, 0 change_events). Canonical NAS DB **byte-identical pre/post soak**
+(sha256 `169fe9e2…`, mtime unchanged from before launch; logical snapshots identical;
+contains 0 change_events). Zero notifications — the runner has no delivery surface.
+Evidence: `state/logs/soak-honor-uk-iso-nas-001.jsonl`,
+`canonical_pre_cycle12_snapshot.json`, `canonical_postsoak_snapshot.json`.
+
+## NEXT_ACTION
+Promotion review for `honor_uk_tablets` per the promotion gate — a separate explicit
+`PRODUCTION_ALLOWLIST` decision; regional identity policy unchanged. Do not merge Windows
+campaign cycles into NAS evidence; do not resume `honor-uk-iso-001`.

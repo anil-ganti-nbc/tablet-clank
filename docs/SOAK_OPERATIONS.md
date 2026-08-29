@@ -2,7 +2,21 @@
 
 The soak runner is bounded and experimental. It does not schedule itself, send alerts, promote sources, or modify the production allowlist.
 
-## Frozen roster and command
+## Campaign-scoped isolated soaks (current mechanism, 2026-08-29)
+
+The historical frozen-roster runner below is RETAINED but can no longer start: its roster overlaps `PRODUCTION_ALLOWLIST`, and `resolve_soak_sources()` refuses that overlap by design. Campaign soaks are the active mechanism:
+
+```text
+python -m tablet_clank.cli soak-campaign --manifest <path> --init --campaign <id> --sources honor_uk_tablets --cycles 12 --interval-seconds 7200
+python -m tablet_clank.cli soak-campaign --manifest <path> --check
+python -m tablet_clank.cli soak-campaign --manifest <path> [--live]
+```
+
+Campaigns take explicit source IDs (gated by `CAMPAIGN_APPROVED_SOURCE_IDS` in the registry), pin a roster hash and interpreter environment in the manifest, run against an isolated SQLite database with a campaign-scoped lock, open the canonical DB read-only (`mode=ro`) for preflight only, and append evidence records (start / per-cycle / aborted / refused / interrupted / end) to a campaign-specific JSONL. Any non-SUCCESS cycle aborts the campaign. Never launch one as a fragile interactive background job — use a durable supervisor (on the NAS: a dedicated Docker container with `restart=no`).
+
+Reference campaign: `honor-uk-iso-nas-001` on the NAS (`/volume2/clank/tablet-clank`, container `tablet-clank-honor-uk-iso-nas-001`), 12/12 SUCCESS 2026-08-28→29; evidence under `state/logs/` and `state/campaigns/`. The Windows campaign `honor-uk-iso-001` is CLOSED (`OPERATOR_ABORTED_FOR_HOST_RELOCATION`, 2 healthy cycles preserved as supporting evidence only, not counted toward promotion).
+
+## Frozen roster and command (historical, retained)
 
 The runner resolves exactly the registry sources whose state is `EXPERIMENTAL` and compares them with the frozen six-source set:
 
