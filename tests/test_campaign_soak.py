@@ -151,23 +151,24 @@ def test_preflight_refuses_missing_canonical_database(tmp_path, _campaign_approv
         preflight_campaign(load_manifest(manifest_path))
 
 
-def test_preflight_refuses_active_or_unreadable_canonical_lock_but_tolerates_stale(tmp_path, monkeypatch, _campaign_approved_honor_uk):
+def test_preflight_refuses_active_or_unreadable_canonical_lock_but_tolerates_stale(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import CampaignError, load_manifest, preflight_campaign, _canonical_lock_state
-    from tablet_clank.soak import lock_path_for_db
-    import tablet_clank.soak as soak_module
+    from tablet_clank.soak import SoakLock, lock_path_for_db
     canonical = _make_canonical(tmp_path)
     lock_file = lock_path_for_db(canonical)
-    lock_file.write_text(json.dumps({"pid": os.getpid(), "role": "production"}), encoding="utf-8")
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical))
-    with pytest.raises(CampaignError, match="canonical lock domain is not clear: active"):
-        preflight_campaign(load_manifest(manifest_path))
+    active = SoakLock(lock_file, role="production"); active.acquire()
+    try:
+        with pytest.raises(CampaignError, match="canonical lock domain is not clear: active"):
+            preflight_campaign(load_manifest(manifest_path))
+    finally:
+        active.release()
     lock_file.write_text("not json at all", encoding="utf-8")
     with pytest.raises(CampaignError, match="canonical lock domain is not clear: unreadable"):
         preflight_campaign(load_manifest(manifest_path))
-    # A stale lock (dead owner) is inactive; the campaign may proceed but
+    # A readable marker with no kernel grant is inactive; the campaign may proceed but
     # must never remove a canonical lock file it did not create.
     lock_file.write_text(json.dumps({"pid": 123456, "role": "stale"}), encoding="utf-8")
-    monkeypatch.setattr(soak_module, "_pid_alive", lambda pid: False)
     preflight = preflight_campaign(load_manifest(manifest_path))
     assert preflight["canonical"]["lock_state"] == "stale"
     assert lock_file.exists()
@@ -257,17 +258,20 @@ def test_campaign_refusal_writes_refused_evidence_record(tmp_path, _campaign_app
     assert "roster hash mismatch" in records[-1]["reason"]
 
 
-def test_campaign_lock_conflict_refuses(tmp_path):
+def test_campaign_lock_conflict_refuses(tmp_path, _campaign_approved_honor_uk):
     from tablet_clank.campaign import run_campaign
-    from tablet_clank.soak import SoakLockError, lock_path_for_db
+    from tablet_clank.soak import SoakLock, SoakLockError, lock_path_for_db
     canonical = _make_canonical(tmp_path)
     manifest_path = _write_manifest(tmp_path, canonical_db=str(canonical))
     campaign_db = tmp_path / "campaign" / "tablet_clank.db"
     campaign_db.parent.mkdir(parents=True, exist_ok=True)
     lock_file = lock_path_for_db(campaign_db)
-    lock_file.write_text(json.dumps({"pid": os.getpid(), "role": "campaign:honor-uk-test"}), encoding="utf-8")
-    with pytest.raises(SoakLockError, match="active soak lock"):
-        run_campaign(manifest_path, fixture_mode=True, sleep=lambda seconds: None)
+    active = SoakLock(lock_file, role="campaign:honor-uk-test"); active.acquire()
+    try:
+        with pytest.raises(SoakLockError, match="active soak lock"):
+            run_campaign(manifest_path, fixture_mode=True, sleep=lambda seconds: None)
+    finally:
+        active.release()
 
 
 def test_keyboard_interrupt_records_interruption(tmp_path, _campaign_approved_honor_uk):

@@ -39,7 +39,6 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import soak as _soak
 from .soak import (
     _DUPLICATE_IDENTITY_SQL,
     SoakLock,
@@ -195,23 +194,12 @@ def load_manifest(manifest_path) -> CampaignManifest:
 
 
 def _canonical_lock_state(canonical_db: Path) -> str:
-    """Inspect the canonical production/soak lock domain without mutating it:
-    a stale lock is reported as stale, never removed."""
-    path = lock_path_for_db(canonical_db)
-    if not path.exists():
-        return "clear"
-    try:
-        pid = json.loads(path.read_text(encoding="utf-8")).get("pid")
-    except Exception:
-        return "unreadable"
-    if not isinstance(pid, int) or pid <= 0:
-        return "unreadable"
-    alive = _soak._pid_alive(pid)
-    if alive is True:
-        return "active"
-    if alive is False:
-        return "stale"
-    return "unknown"
+    """Inspect the canonical lock using the same kernel authority as writers.
+
+    A readable marker with no held descriptor is retained as ``stale`` for
+    campaign-report compatibility. PID metadata is never consulted.
+    """
+    return SoakLock.inspect(lock_path_for_db(canonical_db))
 
 
 def _open_canonical_readonly(canonical_db: Path):

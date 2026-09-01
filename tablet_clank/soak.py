@@ -12,6 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
 from .collectors.apple_store import AppleStoreIPadProCollector
 from .collectors.honor_cn import HonorCNTabletsCollector
 from .collectors.honor_uk import HonorUKTabletsCollector
@@ -31,6 +36,8 @@ FROZEN_SOAK_SOURCE_IDS = frozenset({
     "honor_uk_tablets",
 })
 
+_WINDOWS_LOCK_OFFSET = 1 << 20
+
 
 def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -45,83 +52,110 @@ class SoakLockError(RuntimeError):
     pass
 
 
-def _pid_alive(pid: int) -> bool | None:
-    """Return True if process exists, False if not, None if unknown.
-
-    Windows MUST NOT use os.kill(pid, 0): os.kill maps every non-CTRL
-    signal to TerminateProcess, so a liveness probe against a live owner
-    silently terminates it (self-termination when probing our own PID).
-    The OpenProcess probe mirrors feature-phone-clank core/run_lock.py.
-    """
-    if pid <= 0:
-        return False
+def _os_lock(fd: int) -> None:
     if sys.platform == "win32":
-        try:
-            import ctypes
+        os.lseek(fd, _WINDOWS_LOCK_OFFSET, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+    else:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
-            SYNCHRONIZE = 0x00100000
-            handle = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
-            if handle:
-                ctypes.windll.kernel32.CloseHandle(handle)
-                return True
-            # ERROR_INVALID_PARAMETER (87) usually means PID does not exist
-            err = ctypes.windll.kernel32.GetLastError()
-            if err in (87, 0):
-                return False
-            return None
-        except Exception:
-            return None
+
+def _os_unlock(fd: int) -> None:
+    if sys.platform == "win32":
+        os.lseek(fd, _WINDOWS_LOCK_OFFSET, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    else:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+def _read_lock_metadata(path: Path) -> dict[str, object] | None:
     try:
-        os.kill(pid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True  # exists but not owned by us
-    except Exception:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
+    return value if isinstance(value, dict) else None
 
 
 class SoakLock:
+    """A target-local lock whose authority is the held OS descriptor.
+
+    PID, role, and timestamps in the lock file remain useful diagnostics, but
+    are never consulted to grant, deny, or reclaim the lock.
+    """
+
     def __init__(self, path: str | Path, role: str = "soak"):
         self.path = Path(path)
         self.role = role
         self.acquired = False
+        self._fd: int | None = None
 
     def acquire(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        metadata = {"pid": os.getpid(), "started_at": utcnow(), "role": self.role, "lock_path": str(self.path)}
+        fd = os.open(str(self.path), os.O_CREAT | os.O_RDWR, 0o644)
         try:
-            fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError as exc:
-            try:
-                existing = json.loads(self.path.read_text(encoding="utf-8"))
-            except Exception as read_exc:
-                raise SoakLockError(f"lock exists and cannot be inspected: {self.path}") from read_exc
-            pid = existing.get("pid")
-            if not isinstance(pid, int) or pid <= 0:
-                raise SoakLockError(f"lock exists with unknown owner: {self.path}") from exc
-            alive = _pid_alive(pid)
-            if alive is False:
-                try:
-                    self.path.unlink()
-                except OSError as unlink_exc:
-                    raise SoakLockError(f"stale lock detected but cannot remove it: {self.path}") from unlink_exc
-                return self.acquire()
-            if alive is None:
-                raise SoakLockError(f"lock owner liveness cannot be established for PID {pid}")
-            raise SoakLockError(f"active soak lock held by PID {pid}: {self.path}") from exc
-        os.write(fd, json.dumps(metadata, sort_keys=True).encode("utf-8"))
-        os.close(fd)
+            _os_lock(fd)
+        except OSError as exc:
+            metadata = _read_lock_metadata(self.path)
+            os.close(fd)
+            rendered = json.dumps(metadata, sort_keys=True) if metadata is not None else "unreadable"
+            raise SoakLockError(
+                f"active soak lock is held by the kernel (metadata={rendered}): {self.path}"
+            ) from exc
+
+        metadata = {
+            "pid": os.getpid(),
+            "started_at": utcnow(),
+            "role": self.role,
+            "lock_path": str(self.path),
+            "lock_authority": "os_advisory_lock",
+        }
+        try:
+            os.ftruncate(fd, 0)
+            os.lseek(fd, 0, os.SEEK_SET)
+            os.write(fd, json.dumps(metadata, sort_keys=True).encode("utf-8"))
+        except OSError:
+            # The grant is already real; diagnostic metadata must not weaken it.
+            pass
+        self._fd = fd
         self.acquired = True
 
     def release(self) -> None:
-        if not self.acquired:
+        if not self.acquired or self._fd is None:
             return
         try:
-            self.path.unlink()
+            _os_unlock(self._fd)
         finally:
+            os.close(self._fd)
+            self._fd = None
             self.acquired = False
+
+    @classmethod
+    def inspect(cls, path: str | Path) -> str:
+        """Inspect kernel authority without deleting or rewriting the marker.
+
+        A held kernel grant is active. A readable marker with no held grant is
+        reported as stale for compatibility with campaign reporting; its PID
+        is never used in that decision.
+        """
+        path = Path(path)
+        if not path.exists():
+            return "clear"
+        try:
+            fd = os.open(str(path), os.O_RDWR)
+        except FileNotFoundError:
+            return "clear"
+        except OSError:
+            return "unreadable"
+        try:
+            try:
+                _os_lock(fd)
+            except OSError:
+                return "active"
+            else:
+                _os_unlock(fd)
+        finally:
+            os.close(fd)
+        return "stale" if _read_lock_metadata(path) is not None else "unreadable"
 
     def __enter__(self):
         self.acquire()

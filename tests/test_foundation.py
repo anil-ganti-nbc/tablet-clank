@@ -280,7 +280,7 @@ def test_frozen_soak_roster_now_refuses_due_to_production_overlap():
             assert "production-allowlisted source" in str(exc)
         db.close()
 
-def test_soak_lock_conflict_stale_recovery_and_cleanup():
+def test_soak_lock_conflict_metadata_recovery_and_release():
     from tablet_clank.soak import SoakLock, SoakLockError
     import json, tempfile
     with tempfile.TemporaryDirectory() as directory:
@@ -294,45 +294,56 @@ def test_soak_lock_conflict_stale_recovery_and_cleanup():
                 assert "active soak lock" in str(exc)
         finally:
             first.release()
+        assert __import__("pathlib").Path(path).exists()
+        metadata = json.loads(__import__("pathlib").Path(path).read_text(encoding="utf-8"))
+        assert metadata["lock_authority"] == "os_advisory_lock"
         with open(path, "w", encoding="utf-8") as handle:
             json.dump({"pid": 999999, "role": "stale"}, handle)
         recovered = SoakLock(path); recovered.acquire(); assert recovered.acquired; recovered.release()
-        assert not __import__("pathlib").Path(path).exists()
+        assert __import__("pathlib").Path(path).exists()
 
-def test_soak_lock_owned_by_live_current_process_is_reported_active_not_terminated():
-    """Windows regression: the liveness probe must never TerminateProcess the
-    owner. os.kill(pid, 0) on Windows terminates the probed process, so a lock
-    held by the CURRENT pid used to make this test's interpreter vanish with
-    exit code 0 and no traceback. The probe must report ACTIVE instead."""
+def test_soak_lock_metadata_pid_does_not_prove_authority():
+    """A marker written by a live PID is diagnostic, not a held grant."""
     from tablet_clank.soak import SoakLock, SoakLockError
     import json, os, tempfile
     with tempfile.TemporaryDirectory() as directory:
         path = f"{directory}/tablet_clank.soak.lock"
         with open(path, "w", encoding="utf-8") as handle:
             json.dump({"pid": os.getpid(), "role": "self"}, handle)
-        try:
-            SoakLock(path).acquire()
-            assert False, "lock owned by the live current process must refuse"
-        except SoakLockError as exc:
-            assert "active soak lock" in str(exc)
+        lock = SoakLock(path); lock.acquire()
+        assert lock.acquired
+        lock.release()
         assert __import__("pathlib").Path(path).exists()
 
-def test_stale_lock_recovery_does_not_reclaim_when_owner_liveness_is_unknown(monkeypatch):
-    """If liveness cannot be established, the lock must be refused - never
-    silently stolen (destructive-safety: naming is not identity)."""
+def test_stale_metadata_cannot_authorize_reclaim_of_active_grant():
     from tablet_clank.soak import SoakLock, SoakLockError
-    import tablet_clank.soak as soak_module
     import json, tempfile
-    monkeypatch.setattr(soak_module, "_pid_alive", lambda pid: None)
     with tempfile.TemporaryDirectory() as directory:
         path = f"{directory}/tablet_clank.soak.lock"
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump({"pid": 123456, "role": "opaque"}, handle)
+        first = SoakLock(path); first.acquire()
         try:
-            SoakLock(path).acquire()
-            assert False, "unknown-liveness lock must be refused"
-        except SoakLockError as exc:
-            assert "liveness cannot be established" in str(exc)
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump({"pid": 123456, "role": "stale"}, handle)
+            try:
+                SoakLock(path).acquire()
+                assert False, "active grant must refuse regardless of metadata"
+            except SoakLockError as exc:
+                assert "active soak lock" in str(exc)
+        finally:
+            first.release()
+        recovered = SoakLock(path); recovered.acquire(); recovered.release()
+
+def test_soak_lock_context_releases_after_failure():
+    from tablet_clank.soak import SoakLock
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        path = f"{directory}/tablet_clank.soak.lock"
+        try:
+            with SoakLock(path):
+                raise RuntimeError("synthetic failure")
+        except RuntimeError:
+            pass
+        recovered = SoakLock(path); recovered.acquire(); recovered.release()
 
 
 def test_soak_cycle_isolates_source_failure_and_reports_partial_failure(monkeypatch):
