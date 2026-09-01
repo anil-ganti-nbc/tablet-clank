@@ -51,7 +51,7 @@ from .soak import (
     utcnow,
 )
 from .sources.registry import SOURCES, campaign_approved_source_ids
-from .storage.db import Database
+from .storage.db import Database, inspect_compatibility
 
 CAMPAIGN_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 
@@ -237,6 +237,11 @@ def preflight_campaign(manifest: CampaignManifest) -> dict:
         raise CampaignError(f"canonical lock domain is not clear: {lock_state}")
     if not manifest.canonical_db.exists():
         raise CampaignError(f"canonical database unavailable: {manifest.canonical_db}")
+    compatibility = inspect_compatibility(manifest.canonical_db)
+    if not compatibility.ready:
+        raise CampaignError(
+            f"canonical database compatibility is {compatibility.state}: {compatibility.reason}"
+        )
     try:
         ro = _open_canonical_readonly(manifest.canonical_db)
     except sqlite3.Error as exc:

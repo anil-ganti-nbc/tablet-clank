@@ -26,7 +26,7 @@
 
 - `tablet_clank/pipeline/__init__.py` performs validation, normalization, identity lookup, observation/evidence persistence, metrics, baseline handling and conservative specification change events.
 - Event semantics distinguish `new_product` from the narrow Apple Store `identity_correction` case: when a new identity has the same manufacturer, region and base SKU as an existing Apple Store product, it is treated as parser/identity repair rather than an editorial discovery. Ordinary resighting emits no event.
-- `tablet_clank/storage/db.py` bootstraps schema version 1, enables SQLite foreign keys and WAL, and exposes integrity checking.
+- `tablet_clank/storage/db.py` owns the explicit numbered main/campaign SQLite v3 contract. It inspects existing state read-only, permits only fresh bootstrap or a valid older prefix through the canonical migration path, then requires exact compatibility before normal access. The sibling QC archive has its own numbered v1 contract; unknown, partial, corrupt, or newer state fails closed rather than being stamped or recreated.
 - Accepted observations retain source ID, URL, timestamp, raw JSON, normalized JSON and collector name.
 - Rejected candidates retain run, URL, title, reason and raw values.
 
