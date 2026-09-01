@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+import inspect
 from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ from .collectors.tcl_global import TCLGlobalTabletsCollector
 from .collectors.xml_sitemap import XmlSitemapCollector
 from .models import RunResult
 from .pipeline import process
+from .qualification import QualificationProvenance
 from .sources.registry import PRODUCTION_ALLOWLIST, SOURCES, runtime_source_ids
 from .storage.db import Database
 
@@ -220,7 +222,9 @@ def result_summary(result: RunResult, db: Database, event_ids_before: set[int]) 
     return {"source": result.source_id, "health": result.status, "raw": result.raw_count, "validated": result.validated_count, "rejected": result.rejected_count, "accepted": result.accepted_count, "new": result.new_count, "updated": result.updated_count, "resighted": result.resighted_count, "events": new_events, "error": result.error}
 
 
-def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False, *, sources: list | None = None) -> dict:
+def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False, *, sources: list | None = None,
+              scope_prefix: str = "soak", provenance: QualificationProvenance | str = QualificationProvenance.SCHEDULED,
+              material_inputs: dict | None = None) -> dict:
     started = utcnow(); start_time = time.monotonic(); source_summaries = []
     # sources=None keeps the frozen-roster contract; campaign-scoped callers
     # pass their explicitly approved source list instead.
@@ -230,7 +234,15 @@ def run_cycle(db: Database, cycle_number: int, fixture_mode: bool = False, *, so
     for source in sources:
         before = event_ids_before | {row[0] for row in db.conn.execute("SELECT id FROM change_events")}
         try:
-            result = process(db, collector_for(source, fixture_mode), fixture_mode=fixture_mode)
+            collector = collector_for(source, fixture_mode)
+            if "provenance" in inspect.signature(process).parameters:
+                result = process(
+                    db, collector, fixture_mode=fixture_mode,
+                    provenance=provenance, scope_key=f"{scope_prefix}:{source.id}",
+                    material_inputs=material_inputs,
+                )
+            else:  # compatibility with tests/third-party wrappers around process
+                result = process(db, collector, fixture_mode=fixture_mode)
         except Exception as exc:  # defensive isolation around a source boundary
             result = RunResult(source.id, status="failed", error=str(exc))
         source_summaries.append(result_summary(result, db, before))

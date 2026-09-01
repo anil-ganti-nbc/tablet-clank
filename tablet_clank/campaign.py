@@ -36,6 +36,7 @@ import re
 import sqlite3
 import sys
 import time
+import inspect
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -311,7 +312,21 @@ def run_campaign(manifest_path, fixture_mode: bool = False, sleep=time.sleep) ->
             db = Database(manifest.campaign_db)
             try:
                 for number in range(1, manifest.cycles + 1):
-                    report = run_cycle(db, number, fixture_mode=fixture_mode, sources=sources)
+                    if "scope_prefix" in inspect.signature(run_cycle).parameters:
+                        report = run_cycle(
+                            db, number, fixture_mode=fixture_mode, sources=sources,
+                            scope_prefix=f"campaign:{manifest.name}",
+                            provenance="MANUAL",
+                            material_inputs={
+                                "campaign": manifest.name,
+                                "manifest_sha256": manifest.sha256,
+                                "roster_hash": preflight["roster_hash"],
+                                "cycles": manifest.cycles,
+                                "interval_seconds": manifest.interval_seconds,
+                            },
+                        )
+                    else:  # preserve compatibility with a wrapped test runner
+                        report = run_cycle(db, number, fixture_mode=fixture_mode, sources=sources)
                     reports.append(report)
                     append_report(manifest.report_path, report)
                     if report["status"] != "SUCCESS":

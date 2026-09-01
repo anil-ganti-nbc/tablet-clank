@@ -55,8 +55,9 @@ def test_backup_creates_verified_snapshot(tmp_path: Path):
         report = db.backup_to(target)
         assert report["integrity_check"] == "ok"
         assert report["size_bytes"] > 0 and len(report["sha256"]) == 64
-        # Schema version 2 added change_events.run_id for QC archive provenance.
-        assert report["schema_version"] == 2
+        # Schema version 3 adds the target-local qualification projection;
+        # migration 2 (change_events.run_id) remains intact.
+        assert report["schema_version"] == 3
     finally:
         db.close()
 

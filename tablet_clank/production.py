@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .models import RunResult
+from .qualification import QualificationProvenance
 from .pipeline import process
 from .sources.registry import ALERTS_ENABLED, PRODUCTION_ALLOWLIST, SOURCES, production_source_ids
 from .soak import (
@@ -68,7 +69,12 @@ def run_production_cycle(db: Database, fixture_mode: bool = False) -> dict:
     for source in sources:
         before = event_ids_before | {row[0] for row in db.conn.execute("SELECT id FROM change_events")}
         try:
-            result = process(db, collector_for(source, fixture_mode), fixture_mode=fixture_mode)
+            result = process(
+                db, collector_for(source, fixture_mode), fixture_mode=fixture_mode,
+                provenance=QualificationProvenance.SCHEDULED,
+                scope_key=f"production:{source.id}",
+                material_inputs={"production_allowlist": sorted(PRODUCTION_ALLOWLIST)},
+            )
         except Exception as exc:  # defensive isolation around a source boundary
             result = RunResult(source.id, status="failed", error=str(exc))
         source_summaries.append(result_summary(result, db, before))

@@ -3,12 +3,28 @@ from ..models import RunResult, utcnow
 from ..normalization import normalize_candidate
 from ..validation import validate
 from ..collectors.html_catalogue import HtmlCatalogueCollector
+from ..qualification import QualificationProvenance, material_identity, prepare as prepare_qualification, finish as finish_qualification
 
-def process(db, collector, fixture_mode=False):
+def process(db, collector, fixture_mode=False, *, provenance: QualificationProvenance | str = QualificationProvenance.UNKNOWN,
+            scope_key: str | None = None, material_inputs: dict | None = None):
     source = collector.source; result = RunResult(source.id); started = utcnow()
     db.conn.execute("INSERT OR IGNORE INTO sources(id,manufacturer,region,kind,url,state) VALUES (?,?,?,?,?,?)", (source.id,source.manufacturer,source.region,source.kind,source.url,source.state))
     db.conn.execute("UPDATE sources SET manufacturer=?, region=?, kind=?, url=?, state=? WHERE id=?", (source.manufacturer,source.region,source.kind,source.url,source.state,source.id))
     cur = db.conn.execute("INSERT INTO collector_runs(source_id,started_at,status) VALUES (?,?,?)", (source.id,started,"running")); result.run_id=cur.lastrowid
+    scope_key = scope_key or source.id
+    material_basis = {
+        "target": "tablet-clank",
+        "collector": collector.__class__.__module__ + "." + collector.__class__.__qualname__,
+        "source_id": source.id, "manufacturer": source.manufacturer,
+        "region": source.region, "kind": source.kind, "url": source.url,
+        "qualification_policy": "tablet-qualification-v1",
+    }
+    if material_inputs:
+        material_basis["execution_configuration"] = material_inputs
+    qualification = prepare_qualification(
+        db, run_id=result.run_id, scope_key=scope_key,
+        material=material_identity(material_basis), provenance=provenance,
+    )
     try:
         candidates = collector.collect(); result.raw_count=len(candidates)
         for candidate in candidates:
@@ -54,4 +70,5 @@ def process(db, collector, fixture_mode=False):
         # failures both land here.
         db.conn.execute("UPDATE source_state SET consecutive_healthy_runs=0 WHERE source_id=?", (source.id,))
     db.conn.execute("UPDATE collector_runs SET finished_at=?,status=?,raw_count=?,validated_count=?,rejected_count=?,accepted_count=?,new_count=?,updated_count=?,resighted_count=?,error=? WHERE id=?", (utcnow(),result.status,result.raw_count,result.validated_count,result.rejected_count,result.accepted_count,result.new_count,result.updated_count,result.resighted_count,result.error,result.run_id)); db.conn.commit()
+    finish_qualification(db, qualification, result.status)
     return result

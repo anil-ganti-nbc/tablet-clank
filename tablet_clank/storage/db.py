@@ -33,6 +33,66 @@ class Database:
             self.conn.execute("ALTER TABLE change_events ADD COLUMN run_id INTEGER REFERENCES collector_runs(id)")
         if not self.conn.execute("SELECT 1 FROM schema_migrations WHERE version=2").fetchone():
             self.conn.execute("INSERT INTO schema_migrations VALUES (2, datetime('now'))")
+        # Migration 3: target-local qualification projection.  Qualification
+        # scope/epoch/reset/terminal facts are separate from campaign JSONL
+        # and from the source health state; existing rows remain untouched.
+        columns = {row[1] for row in self.conn.execute("PRAGMA table_info(collector_runs)")}
+        additions = {
+            "provenance": "TEXT NOT NULL DEFAULT 'UNKNOWN'",
+            "qualification_scope": "TEXT",
+            "qualification_epoch_id": "INTEGER",
+            "qualification_material_identity": "TEXT",
+            "qualification_gate_status": "TEXT NOT NULL DEFAULT 'UNKNOWN'",
+        }
+        for name, definition in additions.items():
+            if name not in columns:
+                self.conn.execute(f"ALTER TABLE collector_runs ADD COLUMN {name} {definition}")
+        self.conn.executescript("""
+        CREATE TABLE IF NOT EXISTS qualification_scopes (
+            scope_key TEXT PRIMARY KEY,
+            epoch_id INTEGER NOT NULL,
+            material_identity TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS qualification_epochs (
+            id INTEGER PRIMARY KEY,
+            scope_key TEXT NOT NULL,
+            epoch_number INTEGER NOT NULL,
+            material_identity TEXT NOT NULL,
+            prior_material_identity TEXT,
+            reset_reason TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(scope_key, epoch_number)
+        );
+        CREATE INDEX IF NOT EXISTS idx_qualification_epochs_scope ON qualification_epochs(scope_key, epoch_number);
+        CREATE TABLE IF NOT EXISTS qualification_resets (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER NOT NULL REFERENCES collector_runs(id),
+            scope_key TEXT NOT NULL,
+            epoch_id INTEGER NOT NULL REFERENCES qualification_epochs(id),
+            prior_material_identity TEXT,
+            new_material_identity TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            provenance TEXT NOT NULL DEFAULT 'UNKNOWN',
+            created_at TEXT NOT NULL,
+            UNIQUE(run_id)
+        );
+        CREATE TABLE IF NOT EXISTS qualification_terminals (
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER NOT NULL REFERENCES collector_runs(id),
+            scope_key TEXT NOT NULL,
+            epoch_id INTEGER NOT NULL REFERENCES qualification_epochs(id),
+            material_identity TEXT NOT NULL,
+            provenance TEXT NOT NULL DEFAULT 'UNKNOWN',
+            status TEXT NOT NULL,
+            counts_for_qualification INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            UNIQUE(run_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_qualification_terminals_scope ON qualification_terminals(scope_key, epoch_id);
+        """)
+        if not self.conn.execute("SELECT 1 FROM schema_migrations WHERE version=3").fetchone():
+            self.conn.execute("INSERT INTO schema_migrations VALUES (3, datetime('now'))")
         self.conn.commit()
     def integrity(self): return self.conn.execute("PRAGMA integrity_check").fetchone()[0]
     def backup_to(self, target, overwrite=False):

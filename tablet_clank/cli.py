@@ -7,6 +7,7 @@ from .soak import SoakLock, SoakLockError, lock_path_for_db, readiness_check, ru
 from .campaign import CampaignError, build_manifest, load_manifest, preflight_campaign, run_campaign
 from .production import readiness_check as production_readiness_check, run_production
 from .pipeline import process
+from .qualification import QualificationProvenance
 
 def _soak_campaign_command(args, parser):
     try:
@@ -67,7 +68,11 @@ def main(argv=None):
                 # honor_uk_tablets silently fell through to the wrong
                 # collector class during Wave 2 deployment (failed honestly,
                 # nothing persisted).
-                result=process(db,collector_for(s,fixture_mode=not args.live),fixture_mode=not args.live)
+                result=process(
+                    db, collector_for(s,fixture_mode=not args.live), fixture_mode=not args.live,
+                    provenance=QualificationProvenance.MANUAL,
+                    scope_key=f"manual:{sid}",
+                )
                 print(result)
     elif args.command=="soak":
         try:
