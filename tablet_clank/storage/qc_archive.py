@@ -51,6 +51,77 @@ def inspect_compatibility(path: str | Path) -> SchemaCompatibility:
         return SchemaCompatibility("CORRUPT", QC_SCHEMA_VERSION, (), f"QC archive inspection failed: {error}")
 
 
+def _structure(conn: sqlite3.Connection) -> dict:
+    """Normalised structural fingerprint of everything except the marker table.
+
+    Compared against the canonical contract below to decide whether an
+    unmarked archive is *provably* v1 rather than merely plausible.
+    """
+    rows = conn.execute("SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
+    tables = {name for kind, name, _ in rows if kind == "table" and name != "qc_schema_migrations"}
+    indexes = {name: " ".join((sql or "").split()) for kind, name, sql in rows if kind == "index"}
+    columns = {
+        table: [(r[1], (r[2] or "").upper(), r[3], r[5]) for r in conn.execute(f'PRAGMA table_info("{table}")')]
+        for table in sorted(tables)
+    }
+    return {"tables": tables, "indexes": indexes, "columns": columns}
+
+
+def _canonical_v1_structure() -> dict:
+    """Derive the v1 contract from _SCHEMA itself, so this proof can never
+    drift from the schema it is supposed to be proving against."""
+    conn = sqlite3.connect(":memory:")
+    try:
+        conn.executescript(_SCHEMA)
+        return _structure(conn)
+    finally:
+        conn.close()
+
+
+def adopt_unmarked_v1(path: str | Path) -> SchemaCompatibility:
+    """Operator-invoked adoption of a pre-marker QC archive.
+
+    Early Tablet builds created the v1 ``qc_decisions`` schema before the
+    ``qc_schema_migrations`` marker existed, so those archives inspect as
+    UNKNOWN and every QC surface fails closed against them. This stamps the
+    marker, but *only* after proving the on-disk structure is byte-for-byte
+    the canonical v1 contract -- table set, exact ordered column contract
+    (name/type/notnull/pk) and both index definitions. A structure that does
+    not match exactly is refused, never guessed at, and no row is read,
+    written, or migrated: adoption is purely the marker.
+
+    Deliberately not called from any dashboard/GET path. An UNKNOWN archive
+    must never be silently auto-adopted by merely opening a page.
+    """
+    path = Path(path)
+    status = inspect_compatibility(path)
+    if status.state == "COMPATIBLE":
+        return status  # idempotent: already adopted
+    if status.state != "UNKNOWN":
+        raise SchemaCompatibilityError(f"Tablet QC archive adoption refused {status.state} state: {status.reason}")
+
+    conn = sqlite3.connect(path)
+    try:
+        actual, expected = _structure(conn), _canonical_v1_structure()
+        if actual != expected:
+            raise SchemaCompatibilityError(
+                "Tablet QC archive adoption refused: structure is not the exact v1 contract "
+                f"(tables {sorted(actual['tables'])} vs {sorted(expected['tables'])}; "
+                f"indexes {sorted(actual['indexes'])} vs {sorted(expected['indexes'])}; "
+                f"columns differ: {actual['columns'] != expected['columns']})"
+            )
+        with conn:
+            conn.execute("CREATE TABLE qc_schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)")
+            conn.execute("INSERT INTO qc_schema_migrations VALUES (?, ?)", (QC_SCHEMA_VERSION, _iso()))
+    finally:
+        conn.close()
+
+    adopted = inspect_compatibility(path)
+    if not adopted.ready:
+        raise SchemaCompatibilityError(f"Tablet QC archive adoption did not reach a compatible state: {adopted.state}: {adopted.reason}")
+    return adopted
+
+
 class QCArchive:
     def __init__(self, path: str | Path):
         self.path = Path(path); self.migrate(); self.require_compatible()

@@ -246,3 +246,190 @@ def test_http_run_all_refuses_concurrent_run_with_409(tmp_path):
             assert exc_info.value.code == 409
     finally:
         server.shutdown()
+
+
+# ------------------------------------------------------------------ pre-marker QC archive adoption
+#
+# Early Tablet builds created the v1 qc_decisions schema before the
+# qc_schema_migrations marker existed. Those archives inspect as UNKNOWN, so
+# every QC surface fails closed against them. Adoption stamps the marker, but
+# only after proving the structure is the exact v1 contract.
+
+from tablet_clank.storage.db import SchemaCompatibilityError  # noqa: E402
+from tablet_clank.storage.qc_archive import (  # noqa: E402
+    _SCHEMA,
+    adopt_unmarked_v1,
+    inspect_compatibility as qc_inspect,
+)
+
+
+def _unmarked_v1_archive(path, rows=0):
+    """A v1-shaped archive with no version marker, as older builds left it."""
+    import sqlite3
+
+    conn = sqlite3.connect(path)
+    try:
+        with conn:
+            conn.executescript(_SCHEMA)
+            for i in range(rows):
+                conn.execute(
+                    "INSERT INTO qc_decisions(event_id,source_id,event_type,decision,decided_at,manufacturer,product_name) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (i + 1, "samsung_us_sitemap", "PRICE_CHANGE", "USEFUL", "2026-08-27T00:00:00+00:00", "Samsung", f"Tab {i}"),
+                )
+    finally:
+        conn.close()
+    return path
+
+
+def _demote_to_unmarked(qc_path):
+    """Turn an existing canonical archive back into the pre-marker shape.
+
+    Used instead of deleting the file because QCArchive leaves its
+    connections open, and Windows refuses to unlink an open SQLite file.
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(qc_path)
+    try:
+        with conn:
+            conn.execute("DROP TABLE qc_schema_migrations")
+    finally:
+        conn.close()
+    return qc_path
+
+
+def test_unmarked_v1_archive_inspects_as_unknown(tmp_path):
+    path = _unmarked_v1_archive(tmp_path / "qc.db")
+    status = qc_inspect(path)
+    assert status.state == "UNKNOWN"
+    assert not status.ready
+
+
+def test_qc_surfaces_fail_closed_against_unknown_archive(tmp_path):
+    """C: an UNKNOWN non-empty archive must still fail closed, not auto-adopt."""
+    path = _unmarked_v1_archive(tmp_path / "qc.db")
+    with pytest.raises(SchemaCompatibilityError):
+        QCArchive(path)
+    # merely inspecting/refusing must not have stamped a marker
+    assert qc_inspect(path).state == "UNKNOWN"
+
+
+def test_adoption_stamps_marker_and_preserves_rows(tmp_path):
+    """D: adoption preserves existing QC rows exactly and reaches COMPATIBLE."""
+    import sqlite3
+
+    path = _unmarked_v1_archive(tmp_path / "qc.db", rows=3)
+    before = sqlite3.connect(path)
+    try:
+        original = before.execute("SELECT event_id, decision, decided_at FROM qc_decisions ORDER BY event_id").fetchall()
+    finally:
+        before.close()
+
+    status = adopt_unmarked_v1(path)
+    assert status.state == "COMPATIBLE"
+    assert status.observed_versions == (1,)
+
+    archive = QCArchive(path)  # now opens without refusing
+    assert archive.integrity() == "ok"
+    after = sqlite3.connect(path)
+    try:
+        assert after.execute("SELECT event_id, decision, decided_at FROM qc_decisions ORDER BY event_id").fetchall() == original
+        # uniqueness contract survives adoption
+        with pytest.raises(sqlite3.IntegrityError):
+            after.execute("INSERT INTO qc_decisions(event_id,source_id,event_type,decision,decided_at) VALUES (1,'s','t','USEFUL','now')")
+    finally:
+        after.close()
+
+
+def test_adoption_is_idempotent(tmp_path):
+    path = _unmarked_v1_archive(tmp_path / "qc.db", rows=1)
+    adopt_unmarked_v1(path)
+    assert adopt_unmarked_v1(path).state == "COMPATIBLE"
+
+
+def test_adoption_refuses_structure_that_is_not_exactly_v1(tmp_path):
+    """Adoption must prove structure, never guess a marker."""
+    import sqlite3
+
+    path = tmp_path / "qc.db"
+    conn = sqlite3.connect(path)
+    try:
+        with conn:
+            conn.executescript(_SCHEMA)
+            conn.execute("ALTER TABLE qc_decisions ADD COLUMN unexpected_extra TEXT")
+    finally:
+        conn.close()
+    with pytest.raises(SchemaCompatibilityError):
+        adopt_unmarked_v1(path)
+    assert qc_inspect(path).state == "UNKNOWN"  # still refused, still unmarked
+
+
+def test_adoption_refuses_non_unknown_states(tmp_path):
+    fresh = tmp_path / "fresh.db"
+    QCArchive(fresh)  # canonical fresh archive is already COMPATIBLE
+    assert adopt_unmarked_v1(fresh).state == "COMPATIBLE"
+    missing = tmp_path / "missing.db"
+    with pytest.raises(SchemaCompatibilityError):
+        adopt_unmarked_v1(missing)  # FRESH/non-existent is not an adoption case
+
+
+def test_queue_and_qc_recent_render_compatibility_screen_not_traceback(tmp_path):
+    """A + B: neither QC route may traceback; both explain the refusal."""
+    db_path = tmp_path / "x.db"
+    Database(str(db_path)).close()
+    _unmarked_v1_archive(qc_path_for_db(db_path))
+
+    server, port = _server(db_path)
+    try:
+        for route, heading in (("/queue", "Active Queue"), ("/qc/recent", "Recently QCed")):
+            resp = urllib.request.urlopen(f"http://127.0.0.1:{port}{route}", timeout=10)
+            body = resp.read().decode("utf-8")
+            assert resp.status == 200
+            assert "render_failed" not in body and "Traceback" not in body
+            assert heading in body
+            assert "UNKNOWN" in body and "qc-adopt" in body
+            # must not masquerade as an ordinary empty state
+            assert "No QC decisions recorded yet" not in body
+    finally:
+        server.shutdown()
+
+
+def test_qc_submit_refuses_incompatible_archive_with_503(tmp_path):
+    """A decision must never be written into an archive we cannot vouch for."""
+    import json
+
+    db_path, qc_path, event_id = _seed_event(tmp_path)
+    _demote_to_unmarked(qc_path)
+    server, port = _server(db_path)
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/qc?event_id={event_id}&decision=USEFUL", method="POST"
+        )
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urllib.request.urlopen(req, timeout=10)
+        assert exc_info.value.code == 503
+        assert json.loads(exc_info.value.read())["error"] == "qc_archive_incompatible"
+    finally:
+        server.shutdown()
+
+
+def test_queue_and_qc_recent_work_after_adoption(tmp_path):
+    """E: post-adoption the real queue/archive semantics are intact."""
+    db_path, qc_path, event_id = _seed_event(tmp_path)
+    _demote_to_unmarked(qc_path)
+    adopt_unmarked_v1(qc_path)
+
+    server, port = _server(db_path)
+    try:
+        body = urllib.request.urlopen(f"http://127.0.0.1:{port}/queue", timeout=10).read().decode("utf-8")
+        assert "qc-adopt" not in body  # compatibility screen is gone
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/qc?event_id={event_id}&decision=USEFUL", method="POST"
+        )
+        assert urllib.request.urlopen(req, timeout=10).status in (200, 303)
+        # decided event leaves the active queue and appears in Recently QCed
+        assert event_id not in {e["id"] for e in dash_data.active_queue(db_path, qc_path)["events"]}
+        assert any(r["event_id"] == event_id for r in dash_data.qc_recent(qc_path))
+    finally:
+        server.shutdown()

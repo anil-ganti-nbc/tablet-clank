@@ -37,6 +37,30 @@ def _soak_campaign_command(args, parser):
         return 2
 
 
+def _qc_adopt_command(args):
+    """Inspect, and on request adopt, a pre-marker QC archive.
+
+    ``--check`` only reports the compatibility decision. Without it, an
+    UNKNOWN archive whose structure is provably the exact v1 contract gets
+    its marker stamped; anything else is refused with its reason.
+    """
+    from .storage.qc_archive import adopt_unmarked_v1, inspect_compatibility, qc_path_for_db
+    from .storage.db import SchemaCompatibilityError
+
+    qc_path = Path(args.qc_db) if args.qc_db else qc_path_for_db(args.db)
+    before = inspect_compatibility(qc_path)
+    if args.check:
+        print(json.dumps({"path": str(qc_path), "state": before.state, "reason": before.reason, "versions": list(before.observed_versions)}, ensure_ascii=False, sort_keys=True))
+        return 0
+    try:
+        after = adopt_unmarked_v1(qc_path)
+    except SchemaCompatibilityError as exc:
+        print(f"qc archive adoption refused: {exc}")
+        return 2
+    print(json.dumps({"path": str(qc_path), "before": before.state, "after": after.state, "reason": after.reason, "versions": list(after.observed_versions)}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="tablet-clank"); sub=parser.add_subparsers(dest="command",required=True)
     p=sub.add_parser("collect"); p.add_argument("source",nargs="?"); p.add_argument("--all",action="store_true"); p.add_argument("--live",action="store_true"); p.add_argument("--db",default="var/tablet_clank.db")
@@ -45,12 +69,18 @@ def main(argv=None):
     p=sub.add_parser("backup"); p.add_argument("output"); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--force",action="store_true")
     p=sub.add_parser("db-integrity"); p.add_argument("--db",default="var/tablet_clank.db")
     p=sub.add_parser("soak-campaign"); p.add_argument("--manifest",required=True); p.add_argument("--check",action="store_true"); p.add_argument("--live",action="store_true"); p.add_argument("--init",action="store_true"); p.add_argument("--campaign"); p.add_argument("--sources"); p.add_argument("--cycles",type=int,default=12); p.add_argument("--interval-seconds",type=float,default=7200); p.add_argument("--canonical-db",default="var/tablet_clank.db"); p.add_argument("--campaign-db"); p.add_argument("--report-path")
+    p=sub.add_parser("qc-adopt"); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--qc-db"); p.add_argument("--check",action="store_true")
     sub.add_parser("sources"); sub.add_parser("health"); sub.add_parser("status")
     args=parser.parse_args(argv)
     # Handled before any Database() construction: the campaign runner owns
     # its isolated DB paths and must never open the default-path database.
     if args.command=="soak-campaign":
         return _soak_campaign_command(args,parser)
+    # Also handled before Database(): adopting a pre-marker QC archive is a
+    # deliberate operator act against the archive alone, and must stay
+    # possible even while QC surfaces are failing closed.
+    if args.command=="qc-adopt":
+        return _qc_adopt_command(args)
     db=Database(getattr(args,"db","var/tablet_clank.db"))
     if args.command=="sources":
         for s in SOURCES.values():

@@ -36,8 +36,9 @@ from tablet_clank.pipeline import process  # noqa: E402
 from tablet_clank.production import run_production  # noqa: E402
 from tablet_clank.soak import SoakLock, SoakLockError, lock_path_for_db  # noqa: E402
 from tablet_clank.sources.registry import SOURCES, runtime_source_ids  # noqa: E402
-from tablet_clank.storage.db import Database  # noqa: E402
+from tablet_clank.storage.db import Database, SchemaCompatibilityError  # noqa: E402
 from tablet_clank.storage.qc_archive import QC_DECISIONS, AlreadyDecided, qc_path_for_db  # noqa: E402
+from tablet_clank.storage.qc_archive import inspect_compatibility as qc_inspect  # noqa: E402
 
 APP_NAME = "Tablet Clank"
 
@@ -84,7 +85,13 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                     self._page("overview", "Overview", dash_render.render_overview(dash_data.overview(db_path)))
                     return
                 if path == "/queue":
-                    self._page("queue", "Active Queue", dash_render.render_queue(dash_data.active_queue(db_path, qc_path)))
+                    try:
+                        rendered = dash_render.render_queue(dash_data.active_queue(db_path, qc_path))
+                    except SchemaCompatibilityError:
+                        # Fail closed, but legibly: an archive that cannot be
+                        # trusted must not render as "nothing to review".
+                        rendered = dash_render.render_qc_unavailable("Active Queue", qc_inspect(qc_path), qc_path)
+                    self._page("queue", "Active Queue", rendered)
                     return
                 queue_match = QUEUE_ITEM_RE.match(path)
                 if queue_match:
@@ -96,7 +103,11 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                     self._page("queue", f"Event #{queue_match.group(1)}", dash_render.render_queue_item(item))
                     return
                 if path == "/qc/recent":
-                    self._page("qc-recent", "Recently QCed", dash_render.render_qc_recent(dash_data.qc_recent(qc_path)))
+                    try:
+                        rendered = dash_render.render_qc_recent(dash_data.qc_recent(qc_path))
+                    except SchemaCompatibilityError:
+                        rendered = dash_render.render_qc_unavailable("Recently QCed", qc_inspect(qc_path), qc_path)
+                    self._page("qc-recent", "Recently QCed", rendered)
                     return
                 if path == "/discoveries":
                     self._page("discoveries", "Latest Discoveries", dash_render.render_discoveries(dash_data.latest_discoveries(db_path)))
@@ -212,6 +223,11 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                 snapshot = dash_data.submit_qc(db_path, qc_path, int(event_id_raw), decision)
             except AlreadyDecided as exc:
                 self._send_json(409, {"error": "already_decided", "detail": str(exc)})
+                return
+            except SchemaCompatibilityError as exc:
+                # Never write a decision into an archive we cannot vouch for.
+                status = qc_inspect(qc_path)
+                self._send_json(503, {"error": "qc_archive_incompatible", "state": status.state, "reason": status.reason, "detail": str(exc), "qc_path": str(qc_path)})
                 return
             except Exception as exc:
                 self._send_json(500, {"error": "qc_failed", "detail": str(exc)})

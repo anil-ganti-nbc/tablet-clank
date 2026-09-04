@@ -369,6 +369,37 @@ def render_queue_item(data: dict) -> str:
 """
 
 
+def render_qc_unavailable(title: str, status, qc_path) -> str:
+    """Actionable compatibility screen for a QC archive that fails closed.
+
+    Deliberately not an empty state: an incompatible archive is *not* the
+    same as "no decisions yet", and this page must never let the operator
+    read one as the other. It states the refusal, why, and the exact
+    operator remedy, instead of a raw traceback.
+    """
+    remedy = (
+        "<p>This archive predates the QC version marker. If its structure is provably the exact v1 contract, "
+        "adopt it explicitly from the repo:</p>"
+        f"<pre class=\"mono\">tablet-clank qc-adopt --check --qc-db &quot;{esc(str(qc_path))}&quot;\n"
+        f"tablet-clank qc-adopt --qc-db &quot;{esc(str(qc_path))}&quot;</pre>"
+        "<p class=\"muted\">Adoption stamps the marker only after proving the structure matches; it never rewrites, "
+        "migrates or discards decisions, and is never performed automatically by opening a page.</p>"
+    ) if status.state == "UNKNOWN" else (
+        "<p class=\"muted\">This state has no automatic remedy. Investigate the archive before any QC work — "
+        "do not delete or overwrite it.</p>"
+    )
+    return f"""
+<h1>{esc(title)}</h1>
+<p class="page-sub">QC is unavailable because the archive failed its compatibility gate.</p>
+<div class="panel">
+  <p>{_badge(esc(status.state), 'err')} <strong>{esc(status.reason)}</strong></p>
+  <p class="mono muted">{esc(str(qc_path))}</p>
+  <p class="muted">Expected schema version {esc(status.expected_version)}; marker versions found: {esc(', '.join(str(v) for v in status.observed_versions) or 'none')}.</p>
+  {remedy}
+</div>
+"""
+
+
 def render_qc_recent(rows: list[dict]) -> str:
     if not rows:
         body = '<div class="empty">No QC decisions recorded yet.</div>'
