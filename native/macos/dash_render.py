@@ -45,8 +45,32 @@ def esc(value) -> str:
     return _html_escape(str(value), quote=True)
 
 
+from collector_ui import (  # noqa: E402  (sibling module, added to sys.path by the launchers)
+    CSS as UI_CSS, DESIGN_SYSTEM_VERSION,
+    badge as _ui_badge, empty as _ui_empty,
+)
+
+# Tablet Clank domain accent (the only visual token this Clank overrides).
+ACCENT, ACCENT_SOFT = "#f59e0b", "#33240a"
+
+# Only STATE words are family vocabulary. Domain labels -- QC decisions like
+# "Useful"/"Not useful", relationship names -- are authored text and must keep
+# their own wording and casing, so they are rendered as a plain chip instead of
+# being forced through the shared status vocabulary.
+_FAMILY_WORDS = {
+    "finalized": "PRODUCTION", "soaking": "EXPERIMENTAL", "retired": "DISABLED",
+    "SUCCESS": "SUCCESS", "DEGRADED": "DEGRADED", "ZERO_ITEMS": "DEGRADED",
+    "BLOCKED": "BLOCKED", "FAILED": "FAILED", "NEVER_RUN": "UNKNOWN",
+}
+_TONES = {"accent": None, "muted": "", "bad": "bad", "good": "ok", "warn": "warn"}
+
+
 def _badge(text: str, cls: str) -> str:
-    return f'<span class="badge {esc(cls)}">{esc(text)}</span>'
+    if text in _FAMILY_WORDS:
+        return _ui_badge(_FAMILY_WORDS[text], _TONES.get(cls))
+    tone = _TONES.get(cls) or ""
+    klass = "badge" + ((" " + tone) if tone else "")
+    return f'<span class="{klass}">{esc(text)}</span>'
 
 
 def _health_badge(health: str) -> str:
@@ -125,11 +149,11 @@ def layout(active: str, title: str, content: str, topbar: dict | None = None) ->
     last_group = None
     for key, href, label, group in NAV:
         if group != last_group and group is not None:
-            nav_html.append(f'<div class="navlabel">{esc(group)}</div>')
+            nav_html.append(f'<div class="rail-group">{esc(group)}</div>')
             last_group = group
         elif group is None:
             last_group = None
-        cls = "navitem active" if key == active else "navitem"
+        cls = "nav active" if key == active else "nav"
         nav_html.append(f'<a class="{cls}" href="{esc(href)}">{esc(label)}</a>')
 
     top = topbar or {}
@@ -144,16 +168,19 @@ def layout(active: str, title: str, content: str, topbar: dict | None = None) ->
 
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>{esc(title)} — {esc(APP_NAME)}</title>
-<style>{CSS}</style></head>
+<style>{UI_CSS}
+:root{{--accent:{ACCENT};--accent-soft:{ACCENT_SOFT};}}</style></head>
 <body>
-<div class="shell">
-<aside class="sidebar">
-  <div class="brand">TABLET CLANK<span class="sub muted">discovery console</span></div>
-  <nav>{''.join(nav_html)}</nav>
-</aside>
-<div class="main">
-<header class="topbar">{topbar_html}</header>
-<div class="content">{content}</div>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">TB</span>
+  <span class="brand-name">Tablet Clank</span>
+  <span class="brand-suite">Clank Fleet</span></div>
+  <div class="topbar-meta">{topbar_html}</div>
+</header>
+<div class="body">
+<nav class="rail">{''.join(nav_html)}</nav>
+<main class="main"><div class="wrap">{content}</div></main>
 </div>
 </div>
 </body></html>""".encode("utf-8")
@@ -172,12 +199,12 @@ def render_overview(data: dict) -> str:
     )
     return f"""
 <h1>Overview</h1>
-<p class="pagesub">What Tablet Clank has found so far, at a glance.</p>
-<div class="cards">
-  <div class="card"><div class="value">{c['products']}</div><div class="label">Products</div></div>
-  <div class="card"><div class="value">{c['observations']}</div><div class="label">Observations</div></div>
-  <div class="card"><div class="value">{c['change_events']}</div><div class="label">Recent changes</div></div>
-  <div class="card"><div class="value">{data['sources_healthy']}/{data['sources_total']}</div><div class="label">Sources healthy</div></div>
+<p class="page-sub">What Tablet Clank has found so far, at a glance.</p>
+<div class="cols">
+  <div class="panel pad"><div class="value">{c['products']}</div><div class="label">Products</div></div>
+  <div class="panel pad"><div class="value">{c['observations']}</div><div class="label">Observations</div></div>
+  <div class="panel pad"><div class="value">{c['change_events']}</div><div class="label">Recent changes</div></div>
+  <div class="panel pad"><div class="value">{data['sources_healthy']}/{data['sources_total']}</div><div class="label">Sources healthy</div></div>
 </div>
 <div class="panel"><h2>Last run</h2><p>{last_run_html}</p></div>
 """
@@ -207,11 +234,11 @@ def render_discoveries(data: dict) -> str:
             for e in events
         )
         body = f"""
-<table><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Region</th><th>Observed</th><th>Evidence</th></tr></thead>
+<table class="t"><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Region</th><th>Observed</th><th>Evidence</th></tr></thead>
 <tbody>{rows}</tbody></table>"""
     return f"""
 <h1>Latest Discoveries</h1>
-<p class="pagesub">Meaningful post-baseline changes, most recent first.</p>
+<p class="page-sub">Meaningful post-baseline changes, most recent first.</p>
 {body}
 """
 
@@ -288,11 +315,11 @@ def render_queue(data: dict) -> str:
             for e in events
         )
         body = f"""
-<table><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Change</th><th>Observed</th></tr></thead>
+<table class="t"><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Change</th><th>Observed</th></tr></thead>
 <tbody>{rows}</tbody></table>"""
     return f"""
 <h1>Active Queue</h1>
-<p class="pagesub">{len(events)} lead(s) awaiting a QC decision. Click a row for detail and to decide.</p>
+<p class="page-sub">{len(events)} lead(s) awaiting a QC decision. Click a row for detail and to decide.</p>
 {body}
 """
 
@@ -326,7 +353,7 @@ def render_queue_item(data: dict) -> str:
         for o in data["observations"]
     ) or '<tr><td colspan="4" class="muted">No observations.</td></tr>'
     return f"""
-<p class="pagesub"><a href="/queue">&larr; Active Queue</a></p>
+<p class="page-sub"><a href="/queue">&larr; Active Queue</a></p>
 <h1>{_badge(event_type_label(e['event_type']), 'accent')} {esc(e['manufacturer'])} {esc(e['name'])}</h1>
 <p class="pagesub mono">event #{e['id']} · run #{e.get('run_id') if e.get('run_id') is not None else '—'} · source {esc(e['source_id'])} ({esc(display_name(e['source_id']))})</p>
 <div class="panel">
@@ -337,7 +364,7 @@ def render_queue_item(data: dict) -> str:
 <div class="panel"><h2>Item detail</h2><div class="detail-grid">{detail_html}</div></div>
 <div class="panel"><h2>QC decision</h2>{_qc_buttons()}<div id="qc-result"></div></div>
 <div class="panel"><h2>Observation history ({len(data['observations'])})</h2>
-<table><thead><tr><th>Source</th><th>Observed</th><th>Collector</th><th>Evidence</th></tr></thead><tbody>{obs_rows}</tbody></table></div>
+<table class="t"><thead><tr><th>Source</th><th>Observed</th><th>Collector</th><th>Evidence</th></tr></thead><tbody>{obs_rows}</tbody></table></div>
 {_qc_script(e['id'])}
 """
 
@@ -358,11 +385,11 @@ def render_qc_recent(rows: list[dict]) -> str:
 </tr>"""
             for r in rows
         )
-        body = f"""<table><thead><tr><th>Decision</th><th>Product</th><th>Source</th><th>Event type</th><th>Change</th><th>Decided</th><th>Evidence</th></tr></thead>
+        body = f"""<table class="t"><thead><tr><th>Decision</th><th>Product</th><th>Source</th><th>Event type</th><th>Change</th><th>Decided</th><th>Evidence</th></tr></thead>
 <tbody>{row_html}</tbody></table>"""
     return f"""
 <h1>Recently QCed</h1>
-<p class="pagesub">{len(rows)} most recent decision(s), from the separate QC archive — full provenance preserved, nothing deleted.</p>
+<p class="page-sub">{len(rows)} most recent decision(s), from the separate QC archive — full provenance preserved, nothing deleted.</p>
 {body}
 """
 
@@ -404,12 +431,12 @@ def render_products(data: dict) -> str:
 </tr>"""
             for p in rows
         )
-        body = f"""<table><thead><tr><th>Manufacturer</th><th>Product</th><th>Region</th><th>Sources</th><th>Last seen</th></tr></thead>
+        body = f"""<table class="t"><thead><tr><th>Manufacturer</th><th>Product</th><th>Region</th><th>Sources</th><th>Last seen</th></tr></thead>
 <tbody>{row_html}</tbody></table>"""
 
     return f"""
 <h1>Products</h1>
-<p class="pagesub">{len(rows)} product(s) in the current baseline.</p>
+<p class="page-sub">{len(rows)} product(s) in the current baseline.</p>
 {filters_html}
 {body}
 """
@@ -456,14 +483,14 @@ def render_product_detail(data: dict) -> str:
     )
 
     return f"""
-<p class="pagesub"><a href="/products">&larr; Products</a></p>
+<p class="page-sub"><a href="/products">&larr; Products</a></p>
 <h1>{esc(p['manufacturer'])} {esc(p['name'])}</h1>
 <p class="pagesub mono">identity_key: {esc(p['identity_key'])}</p>
 <div class="panel"><div class="detail-grid">{detail_html}</div></div>
 <div class="panel"><h2>Observation history ({len(data['observations'])})</h2>
-<table><thead><tr><th>Source</th><th>Observed</th><th>Collector</th><th>Evidence</th></tr></thead><tbody>{obs_rows}</tbody></table></div>
+<table class="t"><thead><tr><th>Source</th><th>Observed</th><th>Collector</th><th>Evidence</th></tr></thead><tbody>{obs_rows}</tbody></table></div>
 <div class="panel"><h2>Related events ({len(events)})</h2>
-<table><thead><tr><th>Type</th><th>Change</th><th>Observed</th></tr></thead><tbody>{events_html}</tbody></table></div>
+<table class="t"><thead><tr><th>Type</th><th>Change</th><th>Observed</th></tr></thead><tbody>{events_html}</tbody></table></div>
 """
 
 
@@ -498,12 +525,12 @@ def render_changes(data: dict) -> str:
 </tr>"""
             for e in rows
         )
-        body = f"""<table><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Change</th><th>Observed</th></tr></thead>
+        body = f"""<table class="t"><thead><tr><th>Type</th><th>Product</th><th>Source</th><th>Change</th><th>Observed</th></tr></thead>
 <tbody>{row_html}</tbody></table>"""
 
     return f"""
 <h1>Changes</h1>
-<p class="pagesub">Post-baseline events only — distinct from initial baseline observations.</p>
+<p class="page-sub">Post-baseline events only — distinct from initial baseline observations.</p>
 {filter_html}
 {body}
 """
@@ -528,8 +555,8 @@ def render_sources(rows: list[dict], scope: str | None) -> str:
     )
     return f"""
 <h1>{esc(title)}</h1>
-<p class="pagesub">{len(rows)} source(s). Membership (production/experimental) and current health are separate concepts.</p>
-<table><thead><tr><th>Source</th><th>Manufacturer</th><th>Region</th><th>Membership</th><th>Health</th><th>Last run</th><th>Last success</th><th>Action</th></tr></thead>
+<p class="page-sub">{len(rows)} source(s). Membership (production/experimental) and current health are separate concepts.</p>
+<table class="t"><thead><tr><th>Source</th><th>Manufacturer</th><th>Region</th><th>Membership</th><th>Health</th><th>Last run</th><th>Last success</th><th>Action</th></tr></thead>
 <tbody>{row_html}</tbody></table>
 <div id="collect-result"></div>
 {_collect_script()}
@@ -550,8 +577,8 @@ def render_source_health(rows: list[dict]) -> str:
     )
     return f"""
 <h1>Source Health</h1>
-<p class="pagesub">Derived from the most recent collector run per source.</p>
-<table><thead><tr><th>Source</th><th>Health</th><th>Last run</th><th>Last success</th><th>Last item count</th><th>Note</th></tr></thead>
+<p class="page-sub">Derived from the most recent collector run per source.</p>
+<table class="t"><thead><tr><th>Source</th><th>Health</th><th>Last run</th><th>Last success</th><th>Last item count</th><th>Note</th></tr></thead>
 <tbody>{row_html}</tbody></table>
 """
 
@@ -667,7 +694,7 @@ def render_collect(rows: list[dict], empty: bool) -> str:
     )
     return f"""
 <h1>Collect</h1>
-<p class="pagesub">Live, single-source collection — mirrors the CLI's proven <span class="mono">collect &lt;source&gt; --live</span> path. Launching this GUI never runs a collector by itself.</p>
+<p class="page-sub">Live, single-source collection — mirrors the CLI's proven <span class="mono">collect &lt;source&gt; --live</span> path. Launching this GUI never runs a collector by itself.</p>
 <div class="panel">
   <h2>Run all finalized collectors</h2>
   <p class="muted">Runs exactly the production-approved allowlist, serially, under the shared collection lock — mirrors <span class="mono">tablet-clank production</span>. Soaking/experimental and retired sources are never included, even by accident.</p>
@@ -675,7 +702,7 @@ def render_collect(rows: list[dict], empty: bool) -> str:
   <div id="run-all-result"></div>
 </div>
 {body}
-<table><thead><tr><th>Source</th><th>Manufacturer</th><th>Region</th><th>Maturity</th><th>Health</th><th>Last run</th><th>Action</th></tr></thead>
+<table class="t"><thead><tr><th>Source</th><th>Manufacturer</th><th>Region</th><th>Maturity</th><th>Health</th><th>Last run</th><th>Action</th></tr></thead>
 <tbody>{row_html}</tbody></table>
 <div id="collect-result"></div>
 {_collect_script()}
@@ -700,11 +727,11 @@ def render_runs(rows: list[dict]) -> str:
 </tr>"""
             for r in rows
         )
-        body = f"""<table><thead><tr><th>Source</th><th>Started</th><th>Finished</th><th>Duration</th><th>Status</th><th>Accepted</th><th>New</th><th>Error</th></tr></thead>
+        body = f"""<table class="t"><thead><tr><th>Source</th><th>Started</th><th>Finished</th><th>Duration</th><th>Status</th><th>Accepted</th><th>New</th><th>Error</th></tr></thead>
 <tbody>{row_html}</tbody></table>"""
     return f"""
 <h1>Run History</h1>
-<p class="pagesub">{len(rows)} recorded run(s), most recent first.</p>
+<p class="page-sub">{len(rows)} recorded run(s), most recent first.</p>
 {body}
 """
 
