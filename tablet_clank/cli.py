@@ -1,7 +1,7 @@
 import argparse
 import json
 from pathlib import Path
-from .sources.registry import SOURCES, PRODUCTION_ALLOWLIST, runtime_source_ids, production_source_ids
+from .sources.registry import SOURCES, is_active, PRODUCTION_ALLOWLIST, runtime_source_ids, production_source_ids
 from .storage.db import Database
 from .soak import SoakLock, SoakLockError, lock_path_for_db, readiness_check, run_bounded, collector_for
 from .campaign import CampaignError, build_manifest, load_manifest, preflight_campaign, run_campaign
@@ -84,7 +84,7 @@ def main(argv=None):
     db=Database(getattr(args,"db","var/tablet_clank.db"))
     if args.command=="sources":
         for s in SOURCES.values():
-            membership = "production" if s.id in production_source_ids() else ("experimental" if s.state == "EXPERIMENTAL" else "disabled")
+            membership = "production" if s.id in production_source_ids() else ("active" if is_active(s) else "disabled")
             print(f"{s.id}\t{s.manufacturer}\t{s.region}\t{s.state}\t{membership}")
     elif args.command=="collect":
         ids=list(runtime_source_ids()) if args.all else [args.source]
@@ -92,7 +92,7 @@ def main(argv=None):
             for sid in ids:
                 if sid not in SOURCES: parser.error(f"unknown source: {sid}")
                 s=SOURCES[sid]
-                if s.state != "EXPERIMENTAL": parser.error(f"source is disabled: {sid}")
+                if not is_active(s): parser.error(f"source is disabled: {sid}")
                 # Single routing authority: soak.collector_for. The CLI must
                 # not keep a second collector table — that is exactly how
                 # honor_uk_tablets silently fell through to the wrong

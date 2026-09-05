@@ -86,8 +86,13 @@ def test_products_filters_by_manufacturer_and_source(tmp_path):
     by_source = dash_data.products(db_path, source_id="honor_cn_tablets_catalogue")
     assert all("honor_cn_tablets_catalogue" in r["source_ids"] for r in by_source["rows"])
 
-    experimental_only = dash_data.products(db_path, membership="production")
-    assert all("honor_cn_tablets_catalogue" in r["source_ids"] or "honor_cn_tablets_comparison" in r["source_ids"] or "tcl_global_tablets" in r["source_ids"] for r in experimental_only["rows"])
+    # Derived from the registry rather than a hardcoded list, so promotions
+    # and retirements cannot leave this describing a stale roster.
+    from tablet_clank.sources.registry import production_source_ids
+
+    production_only = dash_data.products(db_path, membership="production")
+    prod_ids = set(production_source_ids())
+    assert all(prod_ids & set(r["source_ids"]) for r in production_only["rows"])
 
 
 def test_product_detail_returns_none_for_missing_id(tmp_path):

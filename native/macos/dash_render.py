@@ -580,7 +580,7 @@ def render_sources(rows: list[dict], scope: str | None) -> str:
 <td>{_health_badge(r['health'])}</td>
 <td class="mono muted">{_fmt_time(r['last_finished_at'])}</td>
 <td class="mono muted">{_fmt_time(r['last_success_at'])}</td>
-<td>{'<button class="btn collect-btn" data-source="' + esc(r['id']) + '">Collect Now</button>' if r['state'] == 'EXPERIMENTAL' else '<span class="muted">unavailable</span>'}</td>
+<td>{'<button class="btn collect-btn" data-source="' + esc(r['id']) + '">Collect Now</button>' if r.get('active', r['state'] != 'DISABLED') else '<span class="muted">unavailable</span>'}</td>
 </tr>"""
         for r in rows
     )
@@ -716,10 +716,10 @@ def render_collect(rows: list[dict], empty: bool) -> str:
         f"""<tr>
 <td><span class="source-name">{esc(display_name(r['id']))}</span><br><span class="source-id mono">{esc(r['id'])}</span></td>
 <td>{esc(r['manufacturer'])}</td><td>{esc(r['region'])}</td>
-<td>{_badge('finalized', 'accent') if r['production'] else (_badge('soaking', 'muted') if r['state'] == 'EXPERIMENTAL' else _badge('retired', 'bad'))}</td>
+<td>{_badge('finalized', 'accent') if r['production'] else (_badge('soaking', 'muted') if r['state'] == 'EXPERIMENTAL' else (_badge('retired', 'bad') if not r.get('active', True) else _badge('active', 'muted')))}</td>
 <td>{_health_badge(r['health'])}</td>
 <td class="mono muted">{_fmt_time(r['last_finished_at'])}</td>
-<td>{'<button class="btn collect-btn" data-source="' + esc(r['id']) + '">Collect Now</button>' if r['state'] == 'EXPERIMENTAL' else '<span class="muted">unavailable</span>'}</td>
+<td>{'<button class="btn collect-btn" data-source="' + esc(r['id']) + '">Collect Now</button>' if r.get('active', r['state'] != 'DISABLED') else '<span class="muted">unavailable</span>'}</td>
 </tr>"""
         for r in rows
     )
@@ -728,7 +728,7 @@ def render_collect(rows: list[dict], empty: bool) -> str:
 <p class="page-sub">Live, single-source collection — mirrors the CLI's proven <span class="mono">collect &lt;source&gt; --live</span> path. Launching this GUI never runs a collector by itself.</p>
 <div class="panel">
   <h2>Run all finalized collectors</h2>
-  <p class="muted">Runs exactly the production-approved allowlist, serially, under the shared collection lock — mirrors <span class="mono">tablet-clank production</span>. Soaking/experimental and retired sources are never included, even by accident.</p>
+  <p class="muted">Runs exactly the production-approved allowlist, serially, under the shared collection lock — mirrors <span class="mono">tablet-clank production</span>. Retired sources, and any future soaking/experimental source, are never included, even by accident.</p>
   <button class="btn" id="run-all-btn">Run all finalized collectors</button>
   <div id="run-all-result"></div>
 </div>

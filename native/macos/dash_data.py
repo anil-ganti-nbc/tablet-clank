@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from tablet_clank.sources.registry import ALERTS_ENABLED, PRODUCTION_ALLOWLIST, SOURCES, production_source_ids, runtime_source_ids
+from tablet_clank.sources.registry import is_active, ALERTS_ENABLED, PRODUCTION_ALLOWLIST, SOURCES, production_source_ids, runtime_source_ids
 from tablet_clank.storage.db import Database
 
 
@@ -83,6 +83,11 @@ def source_health(db_path) -> list[dict]:
                     "region": source.region,
                     "kind": source.kind,
                     "state": source.state,
+                    # Derived from the backend registry, never re-decided in
+                    # the render layer: `active` is "may run at all",
+                    # `production` is maturity/selection membership. Health
+                    # below is a third, independent axis.
+                    "active": is_active(source),
                     "production": source_id in PRODUCTION_ALLOWLIST,
                     "health": classify_health(last),
                     "last_status": last["status"] if last else None,
@@ -225,6 +230,9 @@ def sources_list(db_path, scope=None) -> list[dict]:
     if scope == "production":
         return [r for r in rows if r["production"]]
     if scope == "experimental":
+        # Retained infrastructure: currently empty because every source was
+        # promoted to PRODUCTION (2026-09-05), but a future EXPERIMENTAL
+        # source appears here again with no further change.
         return [r for r in rows if r["state"] == "EXPERIMENTAL" and not r["production"]]
     return rows
 

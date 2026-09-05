@@ -12,7 +12,7 @@ from pathlib import Path
 from .models import RunResult
 from .qualification import QualificationProvenance
 from .pipeline import process
-from .sources.registry import ALERTS_ENABLED, PRODUCTION_ALLOWLIST, SOURCES, production_source_ids
+from .sources.registry import is_active, ALERTS_ENABLED, PRODUCTION_ALLOWLIST, SOURCES, production_source_ids
 from .soak import (
     SoakLock,
     append_report,
@@ -30,8 +30,8 @@ def resolve_production_sources(db: Database) -> list:
     if not ids:
         raise RuntimeError("production allowlist is empty")
     sources = [SOURCES[source_id] for source_id in ids]
-    if any(source.state != "EXPERIMENTAL" for source in sources):
-        raise RuntimeError("production roster contains a non-experimental source")
+    if any(not is_active(source) for source in sources):
+        raise RuntimeError("production roster contains an inactive (disabled/retired) source")
     return sources
 
 

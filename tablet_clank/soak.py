@@ -27,7 +27,7 @@ from .collectors.xml_sitemap import XmlSitemapCollector
 from .models import RunResult
 from .pipeline import process
 from .qualification import QualificationProvenance
-from .sources.registry import PRODUCTION_ALLOWLIST, SOURCES, runtime_source_ids
+from .sources.registry import is_active, PRODUCTION_ALLOWLIST, SOURCES, runtime_source_ids
 from .storage.db import Database
 
 FROZEN_SOAK_SOURCE_IDS = frozenset({
@@ -184,8 +184,8 @@ def resolve_soak_sources(db: Database) -> list:
     if any(source_id in PRODUCTION_ALLOWLIST for source_id in ids):
         raise RuntimeError("soak roster contains a production-allowlisted source")
     sources = [SOURCES[source_id] for source_id in ids]
-    if any(source.state != "EXPERIMENTAL" for source in sources):
-        raise RuntimeError("soak roster contains a non-experimental source")
+    if any(not is_active(source) for source in sources):
+        raise RuntimeError("soak roster contains an inactive (disabled/retired) source")
     return sources
 
 

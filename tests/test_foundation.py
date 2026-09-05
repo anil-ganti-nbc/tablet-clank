@@ -415,34 +415,54 @@ def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report(monkeypatc
         assert [record["cycle"] for record in records[1:]] == [1, 2]
 
 def test_production_allowlist_contains_exactly_approved_sources():
-    from tablet_clank.sources.registry import PRODUCTION_ALLOWLIST, production_source_ids
+    """Operator decision 2026-09-05: every active source was promoted to
+    PRODUCTION maturity, so the allowlist is now every active source. The
+    retired one is still excluded — promotion moved maturity, not
+    enabled/retired state."""
+    from tablet_clank.sources.registry import (
+        PRODUCTION_ALLOWLIST, SOURCES, is_active, production_source_ids,
+    )
     assert set(PRODUCTION_ALLOWLIST) == {
+        "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
         "honor_uk_tablets",
     }
     assert set(production_source_ids()) == set(PRODUCTION_ALLOWLIST)
+    # The retired source is not swept in by the promotion.
+    assert "apple_in_sitemap" not in PRODUCTION_ALLOWLIST
+    assert not is_active(SOURCES["apple_in_sitemap"])
 
-def test_apple_store_sources_are_not_production_eligible():
-    from tablet_clank.sources.registry import production_source_ids
-    assert "apple_us_ipad_pro_store" not in production_source_ids()
-    assert "apple_in_ipad_pro_store" not in production_source_ids()
+def test_apple_store_sources_are_production_eligible_after_promotion():
+    """Promoted 2026-09-05 by explicit operator decision (previously held
+    experimental by the soak/promotion queue)."""
+    from tablet_clank.sources.registry import SOURCES, production_source_ids
+    assert "apple_us_ipad_pro_store" in production_source_ids()
+    assert "apple_in_ipad_pro_store" in production_source_ids()
+    assert SOURCES["apple_us_ipad_pro_store"].state == "PRODUCTION"
+    assert SOURCES["apple_in_ipad_pro_store"].state == "PRODUCTION"
 
-def test_samsung_is_not_production_eligible():
-    from tablet_clank.sources.registry import production_source_ids
-    assert "samsung_us_sitemap" not in production_source_ids()
+def test_samsung_is_production_eligible_after_promotion():
+    from tablet_clank.sources.registry import SOURCES, production_source_ids
+    assert "samsung_us_sitemap" in production_source_ids()
+    assert SOURCES["samsung_us_sitemap"].state == "PRODUCTION"
 
 def test_retired_apple_sitemap_is_not_production_eligible():
     from tablet_clank.sources.registry import production_source_ids
     assert "apple_in_sitemap" not in production_source_ids()
 
-def test_production_selection_cannot_accidentally_include_arbitrary_experimental_source():
-    from tablet_clank.sources.registry import production_source_ids, runtime_source_ids
+def test_production_selection_is_the_allowlist_and_never_a_retired_source():
+    """Selection is still gated by the explicit allowlist, not by "everything
+    registered". After the 2026-09-05 promotion the two sets coincide, but a
+    retired source must never appear in either."""
+    from tablet_clank.sources.registry import (
+        PRODUCTION_ALLOWLIST, production_source_ids, runtime_source_ids,
+    )
     production_ids = set(production_source_ids())
-    experimental_ids = set(runtime_source_ids())
-    assert production_ids < experimental_ids
-    assert experimental_ids - production_ids == {
-        "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
-    }
+    runtime_ids = set(runtime_source_ids())
+    assert production_ids <= runtime_ids
+    assert production_ids == set(PRODUCTION_ALLOWLIST)
+    assert "apple_in_sitemap" not in production_ids
+    assert "apple_in_sitemap" not in runtime_ids
 
 def test_honor_catalogue_is_production_selectable():
     from tablet_clank.sources.registry import production_source_ids
@@ -471,10 +491,10 @@ def test_production_cycle_preserves_baseline_semantics(tmp_path):
     db = Database(tmp_path / "prod.db")
     first = production.run_production_cycle(db, fixture_mode=True)
     assert first["status"] == "SUCCESS"
-    assert {item["source"] for item in first["sources"]} == {
-        "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
-        "honor_uk_tablets",
-    }
+    # Derived from the registry rather than restated, so a future promotion
+    # or retirement cannot leave this assertion quietly describing the past.
+    from tablet_clank.sources.registry import production_source_ids
+    assert {item["source"] for item in first["sources"]} == set(production_source_ids())
     for item in first["sources"]:
         assert item["health"] == "success" and item["new"] > 0
     second = production.run_production_cycle(db, fixture_mode=True)
@@ -483,3 +503,43 @@ def test_production_cycle_preserves_baseline_semantics(tmp_path):
         assert item["health"] == "success" and item["new"] == 0 and item["resighted"] > 0
     assert db.integrity() == "ok"
     db.close()
+
+
+# ---------------------------------------------------------------------- promotion guard
+
+
+def test_no_active_source_is_experimental():
+    """Fleet guard (operator decision 2026-09-05): zero active sources may
+    carry EXPERIMENTAL maturity. Retired/disabled sources are a separate
+    axis and are deliberately not swept into production by that decision."""
+    from tablet_clank.sources.registry import SOURCES, is_active
+
+    experimental = [s.id for s in SOURCES.values() if is_active(s) and s.state == "EXPERIMENTAL"]
+    assert experimental == [], f"active sources still marked EXPERIMENTAL: {experimental}"
+
+
+def test_promotion_did_not_enable_the_retired_source():
+    """Maturity promotion must never revive a source retired for its own
+    reason — that would be changing enabled-state, not maturity."""
+    from tablet_clank.sources.registry import (
+        SOURCES, is_active, production_source_ids, runtime_source_ids,
+    )
+
+    retired = SOURCES["apple_in_sitemap"]
+    assert retired.state == "DISABLED"
+    assert not is_active(retired)
+    assert retired.id not in runtime_source_ids()
+    assert retired.id not in production_source_ids()
+
+
+def test_maturity_infrastructure_survives_an_empty_experimental_set():
+    """Extensibility is retained: a future EXPERIMENTAL source is active and
+    runnable again with no further code change, and is still excluded from
+    the production allowlist until explicitly added."""
+    from dataclasses import replace
+
+    from tablet_clank.sources.registry import PRODUCTION_ALLOWLIST, SOURCES, is_active
+
+    hypothetical = replace(SOURCES["tcl_global_tablets"], id="future_src", state="EXPERIMENTAL")
+    assert is_active(hypothetical)
+    assert hypothetical.id not in PRODUCTION_ALLOWLIST

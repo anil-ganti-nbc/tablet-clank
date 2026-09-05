@@ -25,11 +25,13 @@ def _collector(fixture_mode=True):
     return HonorUKTabletsCollector(get_source("honor_uk_tablets"), fixture_mode=fixture_mode)
 
 
-def test_honor_uk_registered_experimental_with_fixture():
+def test_honor_uk_registered_production_with_fixture():
     from tablet_clank.sources.registry import SOURCES, PRODUCTION_ALLOWLIST
     s = SOURCES["honor_uk_tablets"]
     assert s.manufacturer == "Honor" and s.region == "UK"
-    assert s.state == "EXPERIMENTAL"
+    # Maturity promoted to PRODUCTION by explicit operator decision
+    # (2026-09-05); registry identity and fixture are unchanged.
+    assert s.state == "PRODUCTION"
     # Promotion Wave 3 (2026-08-29): production-approved after the isolated
     # NAS campaign soak completed 12/12; registry identity unchanged.
     assert "honor_uk_tablets" in PRODUCTION_ALLOWLIST
