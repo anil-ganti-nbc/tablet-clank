@@ -34,6 +34,7 @@ from tablet_clank.collectors.tcl_global import TCLGlobalTabletsCollector  # noqa
 from tablet_clank.collectors.xml_sitemap import XmlSitemapCollector  # noqa: E402
 from tablet_clank.pipeline import process  # noqa: E402
 from tablet_clank.production import run_production  # noqa: E402
+from tablet_clank.qualification import QualificationProvenance  # noqa: E402
 from tablet_clank.soak import SoakLock, SoakLockError, lock_path_for_db  # noqa: E402
 from tablet_clank.sources.registry import SOURCES, runtime_source_ids  # noqa: E402
 from tablet_clank.storage.db import Database, SchemaCompatibilityError  # noqa: E402
@@ -186,7 +187,22 @@ def create_server(db_path: Path, build_revision: str) -> ThreadingHTTPServer:
                 db = Database(str(db_path))
                 try:
                     with SoakLock(lock_path_for_db(db_path), role="manual-collect"):
-                        result = process(db, _collector_class(source)(source, fixture_mode=False), fixture_mode=False)
+                        # Same qualification provenance the CLI's `collect`
+                        # stamps (STD-OPS-COM-003): an operator-triggered run
+                        # must stay distinguishable from a scheduled one after
+                        # the fact, and must land in the isolated `manual:`
+                        # scope rather than the scope scheduled evidence
+                        # accumulates in. Omitting these recorded UNKNOWN
+                        # provenance against the bare source scope -- the gate
+                        # refuses UNKNOWN, so nothing was ever miscounted, but
+                        # a GUI run was indistinguishable from a lost-provenance
+                        # one in the ledger.
+                        result = process(
+                            db, _collector_class(source)(source, fixture_mode=False),
+                            fixture_mode=False,
+                            provenance=QualificationProvenance.MANUAL,
+                            scope_key=f"manual:{source_id}",
+                        )
                 finally:
                     db.close()
                 self._send_json(

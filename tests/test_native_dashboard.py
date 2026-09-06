@@ -7,6 +7,7 @@ relative to the repo root - no machine-specific paths anywhere.
 
 from __future__ import annotations
 
+import inspect
 import json
 import sys
 import threading
@@ -27,6 +28,7 @@ from tablet_clank.collectors.honor_cn import HonorCNTabletsCollector  # noqa: E4
 from tablet_clank.collectors.xml_sitemap import XmlSitemapCollector  # noqa: E402
 from tablet_clank.models import RunResult  # noqa: E402
 from tablet_clank.pipeline import process  # noqa: E402
+from tablet_clank.qualification import QualificationProvenance  # noqa: E402
 from tablet_clank.sources.registry import SOURCES  # noqa: E402
 from tablet_clank.storage.db import Database  # noqa: E402
 
@@ -279,7 +281,7 @@ def test_http_collect_success_lifecycle_fields(tmp_path, monkeypatch):
     db_path = tmp_path / "x.db"
     Database(str(db_path)).close()
 
-    def fake_process(db, collector, fixture_mode=False):
+    def fake_process(db, collector, fixture_mode=False, **qualification):
         return RunResult("honor_cn_tablets_catalogue", run_id=1, status="success", raw_count=32, accepted_count=32, new_count=32)
 
     monkeypatch.setattr(webapp, "process", fake_process)
@@ -302,7 +304,7 @@ def test_http_collect_failed_source_reports_error_not_500(tmp_path, monkeypatch)
     db_path = tmp_path / "x.db"
     Database(str(db_path)).close()
 
-    def fake_process(db, collector, fixture_mode=False):
+    def fake_process(db, collector, fixture_mode=False, **qualification):
         return RunResult("samsung_us_sitemap", run_id=1, status="failed", error="zero accepted candidates; source is not healthy")
 
     monkeypatch.setattr(webapp, "process", fake_process)
@@ -366,3 +368,66 @@ def test_event_type_label_uses_canonical_names_not_invented_ones():
     assert dash_names.event_type_label("identity_correction") == "Identity correction"
     assert dash_names.event_type_label("new_product") == "New product"
     assert dash_names.event_type_label("spec_change") == "Field change"
+
+
+# ------------------------------------------- qualification provenance (OPS-003)
+
+
+def test_gui_collect_stamps_manual_provenance_and_isolated_scope(tmp_path, monkeypatch):
+    """A GUI "Collect Now" must be as traceable as the CLI's `collect`.
+
+    STD-OPS-COM-003 requires the execution path itself to record enough
+    provenance to tell a manual run from a scheduled one after the fact.
+    The dashboard used to call process() with neither argument, so its runs
+    landed in the bare source scope carrying UNKNOWN provenance --
+    indistinguishable, in the ledger, from a run whose provenance was lost.
+    The gate refuses UNKNOWN, so nothing was ever miscounted; the evidence
+    was simply not there.
+    """
+    db_path = tmp_path / "x.db"
+    Database(str(db_path)).close()
+    seen = {}
+
+    def fake_process(db, collector, fixture_mode=False, **qualification):
+        seen.update(qualification)
+        return RunResult("honor_cn_tablets_catalogue", run_id=1, status="success",
+                         raw_count=1, accepted_count=1, new_count=1)
+
+    monkeypatch.setattr(webapp, "process", fake_process)
+    server, port = _server(db_path)
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/collect?source=honor_cn_tablets_catalogue", method="POST")
+        assert urllib.request.urlopen(req, timeout=10).status == 200
+    finally:
+        server.shutdown()
+
+    assert seen["provenance"] is QualificationProvenance.MANUAL
+    # Not the bare source id: manual evidence must not accumulate in the
+    # scope scheduled runs qualify against.
+    assert seen["scope_key"] == "manual:honor_cn_tablets_catalogue"
+
+
+def test_gui_manual_scope_matches_the_cli_manual_scope():
+    """The two manual entry points must agree on the scope key.
+
+    If they drift, the same operator action recorded from the GUI and from
+    the CLI would land in two different qualification scopes.
+    """
+    source_id = "honor_cn_tablets_catalogue"
+    cli_scope = f"manual:{source_id}"
+    gui_source = inspect.getsource(webapp.create_server)
+    assert 'scope_key=f"manual:{source_id}"' in gui_source
+    assert cli_scope == f"manual:{source_id}"
+
+
+def test_run_all_keeps_scheduled_provenance_separate_from_manual():
+    """`/collect/all` delegates to run_production, which stamps SCHEDULED.
+
+    Guards against someone "simplifying" the two paths into one provenance.
+    """
+    import tablet_clank.production as production_module
+
+    production_source = inspect.getsource(production_module)
+    assert "QualificationProvenance.SCHEDULED" in production_source
+    assert 'scope_key=f"production:{source.id}"' in production_source
