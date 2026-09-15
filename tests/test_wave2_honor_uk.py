@@ -30,7 +30,7 @@ def test_honor_uk_registered_production_with_fixture():
     s = SOURCES["honor_uk_tablets"]
     assert s.manufacturer == "Honor" and s.region == "UK"
     # Maturity promoted to PRODUCTION by explicit operator decision
-    # (2026-09-05); registry identity and fixture are unchanged.
+    # Registry identity and fixture are unchanged by policy alignment.
     assert s.state == "PRODUCTION"
     # Promotion Wave 3 (2026-08-29): production-approved after the isolated
     # NAS campaign soak completed 12/12; registry identity unchanged.

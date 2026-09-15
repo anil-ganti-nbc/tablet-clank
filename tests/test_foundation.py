@@ -415,15 +415,12 @@ def test_bounded_soak_runs_without_real_sleep_and_writes_jsonl_report(monkeypatc
         assert [record["cycle"] for record in records[1:]] == [1, 2]
 
 def test_production_allowlist_contains_exactly_approved_sources():
-    """Operator decision 2026-09-05: every active source was promoted to
-    PRODUCTION maturity, so the allowlist is now every active source. The
-    retired one is still excluded — promotion moved maturity, not
-    enabled/retired state."""
+    """Operator decision 2026-09-15: only Honor + TCL are selected for
+    production; experimental and retired sources remain excluded."""
     from tablet_clank.sources.registry import (
         PRODUCTION_ALLOWLIST, SOURCES, is_active, production_source_ids,
     )
     assert set(PRODUCTION_ALLOWLIST) == {
-        "apple_us_ipad_pro_store", "apple_in_ipad_pro_store", "samsung_us_sitemap",
         "honor_cn_tablets_catalogue", "honor_cn_tablets_comparison", "tcl_global_tablets",
         "honor_uk_tablets",
     }
@@ -432,28 +429,25 @@ def test_production_allowlist_contains_exactly_approved_sources():
     assert "apple_in_sitemap" not in PRODUCTION_ALLOWLIST
     assert not is_active(SOURCES["apple_in_sitemap"])
 
-def test_apple_store_sources_are_production_eligible_after_promotion():
-    """Promoted 2026-09-05 by explicit operator decision (previously held
-    experimental by the soak/promotion queue)."""
+def test_apple_store_sources_remain_experimental_not_production_selected():
+    """Policy alignment preserves both sources without selecting them."""
     from tablet_clank.sources.registry import SOURCES, production_source_ids
-    assert "apple_us_ipad_pro_store" in production_source_ids()
-    assert "apple_in_ipad_pro_store" in production_source_ids()
-    assert SOURCES["apple_us_ipad_pro_store"].state == "PRODUCTION"
-    assert SOURCES["apple_in_ipad_pro_store"].state == "PRODUCTION"
+    assert "apple_us_ipad_pro_store" not in production_source_ids()
+    assert "apple_in_ipad_pro_store" not in production_source_ids()
+    assert SOURCES["apple_us_ipad_pro_store"].state == "EXPERIMENTAL"
+    assert SOURCES["apple_in_ipad_pro_store"].state == "EXPERIMENTAL"
 
-def test_samsung_is_production_eligible_after_promotion():
+def test_samsung_remains_experimental_not_production_selected():
     from tablet_clank.sources.registry import SOURCES, production_source_ids
-    assert "samsung_us_sitemap" in production_source_ids()
-    assert SOURCES["samsung_us_sitemap"].state == "PRODUCTION"
+    assert "samsung_us_sitemap" not in production_source_ids()
+    assert SOURCES["samsung_us_sitemap"].state == "EXPERIMENTAL"
 
 def test_retired_apple_sitemap_is_not_production_eligible():
     from tablet_clank.sources.registry import production_source_ids
     assert "apple_in_sitemap" not in production_source_ids()
 
 def test_production_selection_is_the_allowlist_and_never_a_retired_source():
-    """Selection is still gated by the explicit allowlist, not by "everything
-    registered". After the 2026-09-05 promotion the two sets coincide, but a
-    retired source must never appear in either."""
+    """Selection is gated by the explicit allowlist, not every active source."""
     from tablet_clank.sources.registry import (
         PRODUCTION_ALLOWLIST, production_source_ids, runtime_source_ids,
     )
@@ -508,14 +502,16 @@ def test_production_cycle_preserves_baseline_semantics(tmp_path):
 # ---------------------------------------------------------------------- promotion guard
 
 
-def test_no_active_source_is_experimental():
-    """Fleet guard (operator decision 2026-09-05): zero active sources may
-    carry EXPERIMENTAL maturity. Retired/disabled sources are a separate
-    axis and are deliberately not swept into production by that decision."""
+def test_only_non_selected_active_sources_are_experimental():
+    """The dormant policy keeps Apple US/IN and Samsung US experimental."""
     from tablet_clank.sources.registry import SOURCES, is_active
 
     experimental = [s.id for s in SOURCES.values() if is_active(s) and s.state == "EXPERIMENTAL"]
-    assert experimental == [], f"active sources still marked EXPERIMENTAL: {experimental}"
+    assert set(experimental) == {
+        "apple_us_ipad_pro_store",
+        "apple_in_ipad_pro_store",
+        "samsung_us_sitemap",
+    }
 
 
 def test_promotion_did_not_enable_the_retired_source():
@@ -532,7 +528,7 @@ def test_promotion_did_not_enable_the_retired_source():
     assert retired.id not in production_source_ids()
 
 
-def test_maturity_infrastructure_survives_an_empty_experimental_set():
+def test_maturity_infrastructure_supports_future_experimental_sources():
     """Extensibility is retained: a future EXPERIMENTAL source is active and
     runnable again with no further code change, and is still excluded from
     the production allowlist until explicitly added."""

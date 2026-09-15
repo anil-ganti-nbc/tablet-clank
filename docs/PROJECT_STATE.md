@@ -2,10 +2,10 @@ PROJECT
 Tablet Clank
 
 PHASE
-Promotion Wave 3 complete: honor_uk_tablets production-approved after isolated NAS campaign soak 12/12; controlled production cycle verified with all four sources healthy
+Policy-aligned dormant roster: the four qualified Honor/TCL sources remain production-selected; Apple US/IN and Samsung US remain experimental and unselected
 
 PRODUCTION
-Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets, honor_uk_tablets (Wave 3, 2026-08-29); production scheduling IS live on the Hetzner fleet host: the twice-daily `tablet-clank-production.timer` (06:20/18:20 UTC) has been active since 2026-08-26 10:49:18Z (unit files deployed from commit d2ab5ba artefacts, merged 2026-08-26 10:43:26Z; re-verified running on 2026-08-29). The 2026-08-29 "timer not found" sweep covered NAS/WSL/Windows only and missed Hetzner. On-demand `python -m tablet_clank.cli production` unchanged. Hetzner's checkout (2bd8929) still runs the Wave-1 three-source allowlist; the Wave-3 honor_uk promotion is not deployed there yet; alerts disabled
+Allowlist = honor_cn_tablets_catalogue, honor_cn_tablets_comparison, tcl_global_tablets, honor_uk_tablets. Intended runtime profile is manual and intentionally dormant, with alerts disabled. Read-only observation on 2026-09-15 found policy/runtime drift: Hetzner checkout `b3088ebc716227b99e1d8aa66942c8a6e87bbfcb` has the exact four-source allowlist and alerts disabled, but `tablet-clank-production.timer` remains enabled and active twice daily. No scheduler mutation was performed in this policy-only change.
 
 DATABASE
 var/tablet_clank.db; integrity ok; 179 products, 646 observations, 23 runs, 2 rejected candidates, 0 change_events (48 historical events live in the QC archive, var/tablet_clank_qc.db); 0 duplicate identity keys; pre-promotion backup var/backups/tablet_clank-pre-honoruk-promotion.db (sha256 169fe9e2…)
@@ -54,10 +54,10 @@ UNVERIFIED
 Long-term Apple Store markup stability, SKU-to-A-model mapping, production safety, global canonical unification, additional Samsung stability
 
 NEXT_ACTION
-Unattended production scheduling is live (twice-daily systemd timer since 2026-08-26 10:49Z, commit d2ab5ba). Design and validate internal event review for the promoted Honor/TCL sources before enabling any external delivery.
+Obtain explicit runtime-change approval before disabling the observed Hetzner timer and reconciling the runtime to the intended manually triggered, intentionally dormant profile. Do not enable external delivery.
 
 STOP_CONDITIONS
-Do not promote Apple or Samsung, enable alerts/external delivery, expand OEM scope, scrape retailers, or refactor speculatively. (Unattended production scheduling was validated and enabled 2026-08-26 via commit d2ab5ba.) Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
+Do not promote Apple or Samsung, mutate the live scheduler without explicit approval, enable alerts/external delivery, expand OEM scope, scrape retailers, or refactor speculatively. Do not restart the old 6-source frozen soak. Stop if identity is indefensible, source responses cannot be distinguished from error/challenge pages, or integrity/migrations fail.
 
 ---
 
