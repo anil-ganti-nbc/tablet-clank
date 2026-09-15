@@ -10,9 +10,11 @@ Stage 1 is intentionally small: Apple's historical India sitemap remains a
 disabled/untrusted source, Apple US/India iPad Pro Store configuration pages
 and Samsung US XML sitemap are experimental collectors, and Honor (CN
 catalogue + comparison) and TCL (global catalogue) are experimental sources
-promoted to the Wave-1 production allowlist after their 2026-08-12/13 soak
-(12/12 cycles successful). Production execution remains unscheduled and
-alerts are disabled (`ALERTS_ENABLED = False`).
+promoted to the production allowlist after successful isolated soaks (Honor
+UK joined in Wave 3). The intended profile is manually triggered and
+intentionally dormant, and alerts are disabled (`ALERTS_ENABLED = False`). A
+2026-09-15 read-only observation found a live Hetzner systemd timer; that
+runtime drift is recorded separately and is not authorization to mutate it.
 
 ## Operations
 

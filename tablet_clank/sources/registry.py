@@ -4,10 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 #: States that mean "this source is not run at all". Everything else is an
 #: active source. Kept as the exclusion list rather than an allow-list of
-#: maturities so a future EXPERIMENTAL source is runnable again without
-#: touching every predicate below (2026-09-05: the operator promoted every
-#: experimental source to PRODUCTION, but the maturity vocabulary and its
-#: filtering infrastructure are deliberately retained).
+#: maturities so an EXPERIMENTAL source remains runnable without becoming
+#: production-selected. The 2026-09-15 policy alignment restores that
+#: distinction for Apple US/IN and Samsung US while preserving their state.
 INACTIVE_STATES: frozenset[str] = frozenset({"DISABLED", "RETIRED"})
 
 
@@ -23,22 +22,19 @@ class Source:
 
 SOURCES = {
  "apple_in_sitemap": Source("apple_in_sitemap", "Apple", "IN", "regional HTML sitemap", "https://www.apple.com/in/sitemap/", "DISABLED", str(ROOT / "tests/fixtures/apple_sitemap.html")),
- "apple_us_ipad_pro_store": Source("apple_us_ipad_pro_store", "Apple", "US", "Apple Store iPad Pro configuration page", "https://www.apple.com/us/shop/buy-ipad/ipad-pro", "PRODUCTION", str(ROOT / "tests/fixtures/apple_store_us_ipad_pro.html")),
- "apple_in_ipad_pro_store": Source("apple_in_ipad_pro_store", "Apple", "IN", "Apple Store iPad Pro configuration page", "https://www.apple.com/in/shop/buy-ipad/ipad-pro", "PRODUCTION", str(ROOT / "tests/fixtures/apple_store_in_ipad_pro.html")),
- "samsung_us_sitemap": Source("samsung_us_sitemap", "Samsung", "US", "regional XML product sitemap", "https://www.samsung.com/us/top_sitemap.xml", "PRODUCTION", str(ROOT / "tests/fixtures/samsung_sitemap.xml")),
+ "apple_us_ipad_pro_store": Source("apple_us_ipad_pro_store", "Apple", "US", "Apple Store iPad Pro configuration page", "https://www.apple.com/us/shop/buy-ipad/ipad-pro", "EXPERIMENTAL", str(ROOT / "tests/fixtures/apple_store_us_ipad_pro.html")),
+ "apple_in_ipad_pro_store": Source("apple_in_ipad_pro_store", "Apple", "IN", "Apple Store iPad Pro configuration page", "https://www.apple.com/in/shop/buy-ipad/ipad-pro", "EXPERIMENTAL", str(ROOT / "tests/fixtures/apple_store_in_ipad_pro.html")),
+ "samsung_us_sitemap": Source("samsung_us_sitemap", "Samsung", "US", "regional XML product sitemap", "https://www.samsung.com/us/top_sitemap.xml", "EXPERIMENTAL", str(ROOT / "tests/fixtures/samsung_sitemap.xml")),
  "honor_cn_tablets_catalogue": Source("honor_cn_tablets_catalogue", "Honor", "CN", "Honor China tablet catalogue", "https://www.honor.com/cn/tablets/", "PRODUCTION", str(ROOT / "tests/fixtures/honor_cn_tablets_catalogue.json")),
  "honor_cn_tablets_comparison": Source("honor_cn_tablets_comparison", "Honor", "CN", "Honor China tablet comparison", "https://www.honor.com/cn/tablets/comparison/", "PRODUCTION", str(ROOT / "tests/fixtures/honor_cn_tablets_comparison.json")),
  "tcl_global_tablets": Source("tcl_global_tablets", "TCL", "GLOBAL", "TCL global tablet catalogue", "https://www.tcl.com/global/en/tablets", "PRODUCTION", str(ROOT / "tests/fixtures/tcl_global_tablets.html")),
  "honor_uk_tablets": Source("honor_uk_tablets", "Honor", "UK", "Honor UK tablet storefront catalogue", "https://www.honor.com/uk/tablets/", "PRODUCTION", str(ROOT / "tests/fixtures/honor_uk_tablets.html")),
 }
 PRODUCTION_ALLOWLIST: tuple[str, ...] = (
-    # Operator decision 2026-09-05: every remaining experimental source was
-    # promoted to PRODUCTION maturity, so each is now selected as a
-    # canonical production source. Health is unchanged and still reported
-    # honestly per source; promotion moved maturity only.
-    "apple_us_ipad_pro_store",
-    "apple_in_ipad_pro_store",
-    "samsung_us_sitemap",
+    # Operator decision 2026-09-15: Tablet is intentionally dormant/manual,
+    # and its production-selected policy roster is exactly Honor + TCL.
+    # Apple US/IN and Samsung US retain their collectors, baselines, and
+    # experimental maturity but are not production-selected.
     "honor_cn_tablets_catalogue",
     "honor_cn_tablets_comparison",
     "tcl_global_tablets",

@@ -230,9 +230,8 @@ def sources_list(db_path, scope=None) -> list[dict]:
     if scope == "production":
         return [r for r in rows if r["production"]]
     if scope == "experimental":
-        # Retained infrastructure: currently empty because every source was
-        # promoted to PRODUCTION (2026-09-05), but a future EXPERIMENTAL
-        # source appears here again with no further change.
+        # Retained infrastructure: active EXPERIMENTAL sources remain
+        # inspectable here without becoming production-selected.
         return [r for r in rows if r["state"] == "EXPERIMENTAL" and not r["production"]]
     return rows
 
