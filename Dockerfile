@@ -7,6 +7,13 @@
 # `production` / `soak` / `collect`; the container itself schedules nothing.
 FROM python:3.12-slim-bookworm@sha256:a116514e19457bcb7af7efe9c3dd0b9b71e85b317694e7882a1c52aa15a78134
 
+# eMudhra intermediate CA (disclosed 2026-10-20): bookworm-security ships
+# ca-certificates 20250419~deb12u2, which drops emSign ECC Root CA - G3 and
+# Comodo AAA Services. The pinned index still includes a pre-advisory ppc64le
+# child, so upgrade the package on every architecture at build time.
+RUN apt-get update && apt-get install -y --only-upgrade ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG GIT_REVISION=unknown
 LABEL org.opencontainers.image.revision="${GIT_REVISION}"
 LABEL org.clank.clank_id="tablet-clank"
