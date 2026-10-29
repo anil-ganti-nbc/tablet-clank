@@ -71,7 +71,11 @@ def main(argv=None):
     p=sub.add_parser("soak-campaign"); p.add_argument("--manifest",required=True); p.add_argument("--check",action="store_true"); p.add_argument("--live",action="store_true"); p.add_argument("--init",action="store_true"); p.add_argument("--campaign"); p.add_argument("--sources"); p.add_argument("--cycles",type=int,default=12); p.add_argument("--interval-seconds",type=float,default=7200); p.add_argument("--canonical-db",default="var/tablet_clank.db"); p.add_argument("--campaign-db"); p.add_argument("--report-path")
     p=sub.add_parser("qc-adopt"); p.add_argument("--db",default="var/tablet_clank.db"); p.add_argument("--qc-db"); p.add_argument("--check",action="store_true")
     sub.add_parser("sources"); sub.add_parser("health"); sub.add_parser("status")
+    from . import discovery_cli
+    discovery_cli.register(sub)
     args=parser.parse_args(argv)
+    if args.command == 'discovery':
+        return discovery_cli.execute(args)
     # Handled before any Database() construction: the campaign runner owns
     # its isolated DB paths and must never open the default-path database.
     if args.command=="soak-campaign":

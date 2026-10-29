@@ -1,0 +1,42 @@
+{
+  "schema_version": "d1.profiles.v1",
+  "profiles": [
+    {
+      "id": "tablets",
+      "destination": "tablet-clank:proposal-review",
+      "relevance": [
+        "^[^\\n]*(?:\\b(?:tablets?|iPad(?:OS)?|MatePad)\\b|\\b(?:Pad|Tab)\\s+(?:[0-9][A-Za-z0-9-]*|Pro|Air|Ultra|Mini|Plus|S[0-9]+|A[0-9]+)\\b|平板)",
+        "^[^\\n]*\\n\\s*(?:(?:the|this|a|an)\\s+)?(?:(?:new|latest|rugged|gaming|android|windows|chromeos|ipados|detachable|lightweight|compact)\\s+){0,4}tablet(?:-first)?\\b",
+        "^[^\\n]*\\n(?:(?!\\b(?:smartphones?|phones?|laptops?|notebooks?|controllers?|gamepads?|power[ -]?banks?|watches)\\b|手机|手柄|充电宝|移动电源|笔记本|手表)(?:[^.!?。！？\\n]|\\.(?=\\d))){0,320}(?:\\b(?:is|be|as|introduc\\w*|unveil\\w*|launch\\w*|announc\\w*)\\s+(?:(?:a|an|its|the|new)\\s+)?(?:(?:new|latest|rugged|gaming|android|windows|chromeos|ipados|detachable|lightweight|compact)\\s+){0,4}tablet(?:-first)?\\b|,\\s*(?:a|an)\\s+(?:(?:new|latest|rugged|gaming|android|windows|chromeos|ipados|detachable|lightweight|compact)\\s+){0,4}tablet\\b|(?:是|推出|发布)(?:了)?(?:一款|新款|一个)?(?:安卓|游戏|三防|可拆卸|新款|轻薄)*平板(?:电脑)?)"
+      ],
+      "event": [
+        "^(?![^\\n]*(?:rumou?r|leak|alleged|could|might|expected|reportedly|concept|convertible|传闻|曝光|或将|有望|疑似))(?=[^\\n]*(?:\\btablets?\\b|\\biPad\\b|\\bMatePad\\b|\\b(?:Pad|Tab)\\s+[A-Z0-9]|平板))[^\\n]*\\b(?:launch(?:es|ed)?|announc(?:e|es|ed)|unveil(?:s|ed)?|introduc(?:e|es|ed)|debut(?:s|ed)?|releas(?:e|es|ed)|now available|goes on sale)\\b",
+        "^(?![^\\n]*(?:传闻|曝光|或将|有望|疑似|概念|翻转本))(?=[^\\n]*(?:平板|iPad|MatePad|\\b(?:Pad|Tab)\\s+[A-Z0-9]))[^\\n]*(?:发布|推出|上市|开售|发售)"
+      ],
+      "negative": [
+        "^(?:(?!\\b(?:tablets?|iPad|MatePad|Pad|Tab)\\b|平板)[^\\n])*(?:\\b(?:gaming controllers?|controllers?|gamepads?|power[ -]?banks?)\\b|游戏手柄|手柄|充电宝|移动电源)",
+        "国补|补贴[后价]|消费券|优惠券|到手价|直降|折扣|\\bsubsid(?:y|ies|ized)\\b|\\b(?:digital|electronics?)\\b[^\\n]*\\b(?:sales|shipments?|statistics?)\\b|(?:数码|电子产品)[^\\n]*(?:销量|销售|同比)|(?:销量|销售额)[^\\n]*(?:同比|增长|统计)",
+        "^(?:(?!\\b(?:tablet|iPad|MatePad|Pad|Tab)\\b|平板)[^\\n])*(?:\\bsmartphones?\\b|\\biPhone\\b|\\bphones?\\b|\\bsmartwatch(?:es)?\\b|\\bwatch(?:es)?\\b|手机|手表)",
+        "^(?:(?!\\b(?:tablets?|iPad|MatePad|Pad|Tab)\\b|平板)[^\\n])*(?:\\b(?:laptops?|notebooks?|convertibles?|e-readers?|ereaders?|Kindle)\\b|笔记本|翻转本|电子书阅读器)",
+        "\\b(?:keyboard|stylus|charger|accessory)\\s+(?:launch(?:es|ed)?|announc(?:ed|ement)|unveil(?:ed)?)\\b",
+        "\\b(?:tablet|iPad|MatePad|Pad|Tab)\\b[^\\n]*\\b(?:keyboard case|cases?|covers?|stylus|styluses|accessories|accessory|screen protector|charger)\\b|平板[^\\n]*(?:保护套|保护壳|配件|手写笔)",
+        "^(?:New |A new |The new )?(?:keyboard|stylus|case|cover|charger|accessory)\\b|^(?:新款)?(?:键盘|保护套|手写笔)",
+        "(?<!on )\\bsale\\b|\\b(?:reviews?|hands.on|buying guide|deals?|coupon|discount|save\\s+[$€£]|best tablets)\\b|评测|测评|优惠|促销|降价|导购|购物指南"
+      ],
+      "sources": [
+        {
+          "id": "gizmochina",
+          "url": "https://www.gizmochina.com/feed/",
+          "publisher": "Gizmochina",
+          "description": "English-language third-party technology news; reports not official manufacturer verification."
+        },
+        {
+          "id": "ithome",
+          "url": "https://www.ithome.com/rss/",
+          "publisher": "IT Home",
+          "description": "Simplified-Chinese third-party technology news; reports not official manufacturer verification."
+        }
+      ]
+    }
+  ]
+}

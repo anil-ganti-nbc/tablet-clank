@@ -72,8 +72,47 @@ def wait_ready(url: str, timeout: float = 30.0) -> None:
     raise RuntimeError("dashboard did not become ready")
 
 
-def main() -> int:
+def launch_discovery(args) -> int:
+    """Separate runtime authority; never configures or opens legacy state."""
+    from tablet_clank.discovery_cli import load
+    from tablet_clank.discovery_dashboard import create_server
+
+    cfg = load(args.settings)
+    server = create_server(cfg, args.port)
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    marker = cfg.data_dir / 'runtime' / 'discovery-dashboard.json'
+    thread = threading.Thread(target=server.serve_forever, name='tablet-discovery-dashboard')
+    thread.start()
+    try:
+        wait_ready(url)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({'pid': os.getpid(), 'port': server.server_address[1],
+                                     'url': url, 'mode': 'discovery-only'}), encoding='utf8')
+        if os.getenv('TABLET_CLANK_NO_BROWSER') != '1':
+            os.startfile(url)
+        stop = threading.Event()
+        signal.signal(signal.SIGTERM, lambda *_: stop.set())
+        signal.signal(signal.SIGINT, lambda *_: stop.set())
+        while not stop.wait(0.25) and thread.is_alive():
+            pass
+        return 0
+    finally:
+        server.shutdown()
+        thread.join(timeout=15)
+        server.server_close()
+        marker.unlink(missing_ok=True)
+
+
+def main(argv=None) -> int:
     sys.path.insert(0, str(resource_root()))
+    argv = sys.argv[1:] if argv is None else argv
+    if '--discovery-only' in argv:
+        import argparse
+        parser = argparse.ArgumentParser(description='Tablet Discovery-only manual view')
+        parser.add_argument('--discovery-only', action='store_true', required=True)
+        parser.add_argument('--settings', required=True)
+        parser.add_argument('--port', type=int, default=8789)
+        return launch_discovery(parser.parse_args(argv))
     # Shared GUI modules (webapp/dash_data/dash_render/dash_names/qc_archive
     # wiring) live in native/macos/ -- there is nothing macOS-specific in
     # those modules themselves (stdlib http.server only), so Windows reuses
