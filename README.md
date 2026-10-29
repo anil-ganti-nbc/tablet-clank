@@ -16,6 +16,12 @@ intentionally dormant, and alerts are disabled (`ALERTS_ENABLED = False`). A
 2026-09-15 read-only observation found a live Hetzner systemd timer; that
 runtime drift is recorded separately and is not authorization to mutate it.
 
+## Manual Discovery inbox
+
+The optional, disabled-by-default [D1 Tablet Discovery integration](docs/D1_DISCOVERY.md)
+uses a separately pinned shared producer and tablet profile. Its proposal-only,
+read-only view never opens the catalogue or enables legacy collectors.
+
 ## Operations
 
 ```text

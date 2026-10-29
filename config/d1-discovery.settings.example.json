@@ -1,0 +1,8 @@
+{
+  "producer_id": "tablet-d1-v1",
+  "producer": "C:/DiscoveryCore/d1.py",
+  "profiles": "C:/TabletDiscovery/config/d1-tablets.v1.json",
+  "evidence_root": "C:/TabletDiscovery/producer-state",
+  "data_dir": "C:/TabletDiscovery/consumer-state",
+  "enabled": false
+}
