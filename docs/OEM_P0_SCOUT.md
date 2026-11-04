@@ -45,12 +45,25 @@ Offline verification:
 
     python -m pytest tests/test_oem_catalogue_scout.py -q
 
-Manual read-only parser probe (after access approval), without any DB write:
+**Do not use `collector.collect()` as a live preflight.** Its ordinary
+fetch follows redirects implicitly and does not account for each network
+request, check robots, or enforce a response-size limit. A read-only parser
+is not the same thing as a controlled network request. No automated live
+preflight command has yet been qualified on this branch.
 
-    python -c "from tablet_clank.sources.registry import SOURCES; from tablet_clank.soak import collector_for; c=collector_for(SOURCES['alldocube_global_tablets'], False); print([(x.source_identifier, x.url) for x in c.collect()])"
+An authorized operator must first review the current terms and robots rules
+from the intended host and explicitly approve the access. The future manual
+preflight must count every request and redirect, enforce time and size limits,
+stop on 403/429 (including Retry-After), and fail closed when permissions or
+completeness are uncertain. It must not send credentials, cookies or alerts,
+write a database, or alter source state. Save a private, reproducible snapshot
+only after reviewing it for server-issued tokens or other sensitive data; do
+not commit raw responses or sensitive headers. Treat hashes and extracted
+candidate lists as useful evidence, not substitutes for a replayable snapshot.
 
-Substitute the other source ID to inspect its listing. The probe neither
-changes baseline state nor starts a timer.
+Until that tool is implemented and tested, the fixture-only test above is the
+safe verification path. Do not run the dormant scheduler or use the production
+database to obtain a live sample.
 
 ## Separate announcement/discovery lane
 
