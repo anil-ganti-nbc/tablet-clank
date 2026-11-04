@@ -52,10 +52,10 @@ is not the same thing as a controlled network request. The manual preflight belo
 not yet been qualified against a live OEM source.
 
 An authorized operator must first review the current terms and robots rules
-from the intended host and explicitly approve the access. The future manual
-preflight must count every request and redirect, enforce time and size limits,
-stop on 403/429 (including Retry-After), and fail closed when permissions or
-completeness are uncertain. It must not send credentials, cookies or alerts,
+from the intended host and explicitly approve the access. The manual preflight records each attempted request and stops at the first
+redirect without following it. It enforces time and size limits, stops on
+403/429 (recording Retry-After), and fails closed when access or completeness
+is uncertain. It must not send credentials, cookies or alerts,
 write a database, or alter source state. Save a private, reproducible snapshot
 only after reviewing it for server-issued tokens or other sensitive data; do
 not commit raw responses or sensitive headers. Treat hashes and extracted
@@ -72,7 +72,9 @@ of the other two source IDs only after its own review. The probe makes at most
 two attempts (robots, then category), never follows redirects or retries, and
 stops on any non-200, unavailable/unparseable robots, disallow, unexpected
 content type, oversize body, decode failure, or parser completeness failure.
-It uses 15-second socket timeouts and a 2 MB per-response bound. It creates a
+It uses 15-second socket timeouts and a 2 MB per-response bound. Python's
+standard opener honors the host's configured proxy environment; the operator
+must review that egress configuration and must not use it to evade restrictions. It creates a
 new mode-0600 report and refuses to overwrite an existing path. The report
 contains status, count, hashes and slugs, not response bodies or headers other
 than Retry-After; it is not a replayable raw snapshot. No opt-in raw capture
