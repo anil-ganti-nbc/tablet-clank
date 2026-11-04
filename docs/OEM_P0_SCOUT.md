@@ -48,8 +48,8 @@ Offline verification:
 **Do not use `collector.collect()` as a live preflight.** Its ordinary
 fetch follows redirects implicitly and does not account for each network
 request, check robots, or enforce a response-size limit. A read-only parser
-is not the same thing as a controlled network request. No automated live
-preflight command has yet been qualified on this branch.
+is not the same thing as a controlled network request. The manual preflight below is available for controlled evaluation, but it has
+not yet been qualified against a live OEM source.
 
 An authorized operator must first review the current terms and robots rules
 from the intended host and explicitly approve the access. The future manual
@@ -61,9 +61,31 @@ only after reviewing it for server-issued tokens or other sensitive data; do
 not commit raw responses or sensitive headers. Treat hashes and extracted
 candidate lists as useful evidence, not substitutes for a replayable snapshot.
 
-Until that tool is implemented and tested, the fixture-only test above is the
-safe verification path. Do not run the dormant scheduler or use the production
-database to obtain a live sample.
+For a future **authorized, manual** run on the intended host, review the
+current terms and robots policy for that exact user agent and catalogue path,
+confirm a suitably private output directory, and run exactly one source:
+
+    python -m tablet_clank.oem_preflight alldocube_global_tablets --terms-reviewed --output /private/path/alldocube-preflight.json
+
+The attestation is required; it does not replace human review. Substitute one
+of the other two source IDs only after its own review. The probe makes at most
+two attempts (robots, then category), never follows redirects or retries, and
+stops on any non-200, unavailable/unparseable robots, disallow, unexpected
+content type, oversize body, decode failure, or parser completeness failure.
+It uses 15-second socket timeouts and a 2 MB per-response bound. It creates a
+new mode-0600 report and refuses to overwrite an existing path. The report
+contains status, count, hashes and slugs, not response bodies or headers other
+than Retry-After; it is not a replayable raw snapshot. No opt-in raw capture
+is implemented, so a separately reviewed privacy-safe capture procedure is
+still required for reproducibility. Robots parsing is an additional guard,
+not a substitute for manually reviewing all applicable rules and terms.
+The script cannot establish legal permission or complete catalogue coverage.
+A redirect or 403/429 is a stop for review, not permission to work around it.
+Do not run the dormant scheduler or use the production database for a sample.
+
+Hermetic probe tests:
+
+    python -m pytest tests/test_oem_preflight.py -q
 
 ## Separate announcement/discovery lane
 
