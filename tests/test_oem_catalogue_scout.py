@@ -9,7 +9,6 @@ import pytest
 
 from tablet_clank.collectors.html_catalogue import HtmlCatalogueCollector
 from tablet_clank.collectors.oem_catalogues import OEMTabletCatalogueCollector
-from tablet_clank.models import Candidate
 from tablet_clank.pipeline import process
 from tablet_clank.soak import collector_for
 from tablet_clank.sources.registry import (
