@@ -87,3 +87,14 @@ def test_oversize_and_invalid_robots_stop():
     opener = Opener([robots(b'<html>blocked</html>')])
     assert probe.preflight(SOURCE, opener)['result'] == 'stopped'
     assert len(opener.calls) == 1
+
+
+def test_read_timeout_is_reported_without_retry():
+    class ReadTimeout(Response):
+        def read(self, size=-1):
+            raise TimeoutError("timeout")
+    opener = Opener([robots(), ReadTimeout(b"", "text/html")])
+    result = probe.preflight(SOURCE, opener)
+    assert result["result"] == "stopped"
+    assert "timeout" in result["reason"]
+    assert len(opener.calls) == len(result["requests"]) == 2
