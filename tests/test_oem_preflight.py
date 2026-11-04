@@ -98,3 +98,27 @@ def test_read_timeout_is_reported_without_retry():
     assert result["result"] == "stopped"
     assert "timeout" in result["reason"]
     assert len(opener.calls) == len(result["requests"]) == 2
+
+
+def test_cli_requires_terms_before_network_or_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(probe.urllib.request, "build_opener",
+                        lambda *args: pytest.fail("must not construct opener"))
+    output = tmp_path / "report.json"
+    with pytest.raises(SystemExit):
+        probe.main([SOURCE, "--output", str(output)])
+    assert not output.exists()
+
+
+def test_cli_refuses_existing_output_before_network(tmp_path, monkeypatch):
+    output = tmp_path / "report.json"
+    output.write_text("keep", encoding="utf-8")
+    monkeypatch.setattr(probe.urllib.request, "build_opener",
+                        lambda *args: pytest.fail("must not construct opener"))
+    with pytest.raises(FileExistsError):
+        probe.main([SOURCE, "--terms-reviewed", "--output", str(output)])
+    assert output.read_text(encoding="utf-8") == "keep"
+
+
+def test_redirect_handler_never_follows():
+    handler = probe.NoRedirect()
+    assert handler.redirect_request(None, None, 302, "", {}, "https://example.invalid") is None
