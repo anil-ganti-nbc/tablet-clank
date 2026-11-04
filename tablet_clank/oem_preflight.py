@@ -57,7 +57,10 @@ def request_once(opener, url, requests):
             raise Stop("non-200 response")
         content_type = response.headers.get_content_type()
         entry["content_type"] = content_type
-        body = response.read(MAX_BYTES + 1)
+        try:
+            body = response.read(MAX_BYTES + 1)
+        except OSError:
+            raise Stop("network error or timeout while reading") from None
         if len(body) > MAX_BYTES:
             raise Stop("response exceeds size limit")
         entry["bytes"] = len(body)
