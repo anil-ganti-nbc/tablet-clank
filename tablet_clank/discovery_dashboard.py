@@ -28,6 +28,27 @@ def evidence_bytes(cfg, name):
     return raw
 
 
+def render_early_feed_preview(metadata):
+    """Offline native QC, never an authenticated D1 inbox view."""
+    from .early_feed import preview_retained
+    rows = preview_retained(metadata)
+    h = lambda value: escape(str(value), quote=True)
+    cards = []
+    for row in rows:
+        cards.append('<article><h2>' + h(row['source_title']) + '</h2><p>' +
+                     h(row['decision']) + ' · ' + h(row['event_hint']) +
+                     ' · secondary editorial, not OEM proof</p><p>' +
+                     h(row['source_url']) + '</p><dl><dt>Original article date</dt><dd>' +
+                     h(row['source_published_at_original']) +
+                     '</dd><dt>UTC article date</dt><dd>' + h(row['source_published_at']) +
+                     '</dd><dt>Brand / model / region</dt><dd>UNRESOLVED</dd></dl></article>')
+    return ('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+            '<title>Tablet · offline feed QC</title></head><body><main>'
+            '<h1>Retained feed metadata QC — not D1 intake or source admission</h1><p>' +
+            h(len(rows)) + ' unique articles; no collection or product writes</p>' +
+            ''.join(cards) + '</main></body></html>')
+
+
 def render_discovery(cfg):
     h = lambda value: escape(str(value), quote=True)
     rows = d.read_inbox(cfg)
