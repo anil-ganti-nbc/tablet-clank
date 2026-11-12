@@ -22,6 +22,7 @@ from .collectors.apple_store import AppleStoreIPadProCollector
 from .collectors.honor_cn import HonorCNTabletsCollector
 from .collectors.honor_uk import HonorUKTabletsCollector
 from .collectors.html_catalogue import HtmlCatalogueCollector
+from .collectors.oem_catalogues import OEMTabletCatalogueCollector
 from .collectors.tcl_global import TCLGlobalTabletsCollector
 from .collectors.xml_sitemap import XmlSitemapCollector
 from .models import RunResult
@@ -208,6 +209,8 @@ def readiness_check(db: Database) -> dict:
 
 
 def collector_for(source, fixture_mode: bool):
+    if source.id in {"alldocube_global_tablets", "teclast_global_tablets", "blackview_zeno_tablets"}:
+        return OEMTabletCatalogueCollector(source, fixture_mode=fixture_mode)
     if "UK tablet storefront" in source.kind: cls = HonorUKTabletsCollector
     elif source.manufacturer == "Honor": cls = HonorCNTabletsCollector
     elif source.manufacturer == "TCL": cls = TCLGlobalTabletsCollector
