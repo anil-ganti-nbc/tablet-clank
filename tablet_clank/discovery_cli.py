@@ -1,5 +1,4 @@
 """Explicit manual Discovery CLI; separate settings, disabled by default."""
-from dataclasses import asdict
 from pathlib import Path
 import os
 import uuid
@@ -22,10 +21,14 @@ def load(path):
 
 
 def save(path, cfg):
+    if cfg.prtimes_141131_profile_sha is not None:
+        raise ValueError('Offline PR TIMES 141131 profile cannot be configured by CLI')
     path = Path(path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
-    temp.write_text(d.dumps({k: str(v) if isinstance(v, Path) else v for k, v in asdict(cfg).items()}) + '\n', encoding='utf8')
+    fields = ('producer_id', 'producer', 'profiles', 'evidence_root', 'data_dir', 'enabled')
+    temp.write_text(d.dumps({k: str(getattr(cfg, k)) if isinstance(getattr(cfg, k), Path) else getattr(cfg, k)
+                             for k in fields}) + '\n', encoding='utf8')
     os.replace(temp, path)
 
 

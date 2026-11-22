@@ -28,6 +28,9 @@ PRODUCER_ID = 'tablet-d1-v1'
 IDENTITY = '4c838ff26a9f83725ba9256ef24e21793841aafa08a7c4d659a76f9dc96c271f'
 CODE_SHA = 'eaac15eb9ad414b2bbdd63870b70bbc1a8b2d93d9f21f1308c43db3217c69bf1'
 PROFILES_SHA = 'ff4f12a480bac78fd102a1e9dde74121bb0315a147ae9c9ba7889c1d904c2a0a'
+# Experimental metadata contract only; no retained 141131 capture or live authority.
+PRTIMES_141131_PRODUCER_ID = 'tablet-d1-prtimes-141131-offline-v1'
+PRTIMES_141131_PROFILES_SHA = 'c117d5783f1f5fbd954f73aa4d865d8cbde666451e6b4cf07ac7e82aa7bf2da8'
 PROFILE = 'tablets'
 DESTINATION = 'tablet-clank:proposal-review'
 MAX_EXPORT = 32 * 1024 * 1024
@@ -67,10 +70,15 @@ class Settings:
     evidence_root: Path
     data_dir: Path
     enabled: bool = False
+    prtimes_141131_profile_sha: str | None = None
 
     def __post_init__(self):
-        if self.producer_id != PRODUCER_ID:
-            raise ValueError('Expected stable tablet producer_id: ' + PRODUCER_ID)
+        if self.prtimes_141131_profile_sha is None:
+            if self.producer_id != PRODUCER_ID:
+                raise ValueError('Expected stable tablet producer_id: ' + PRODUCER_ID)
+        elif (self.producer_id != PRTIMES_141131_PRODUCER_ID or
+              self.prtimes_141131_profile_sha != PRTIMES_141131_PROFILES_SHA):
+            raise ValueError('Unreviewed PR TIMES 141131 offline identity')
         if type(self.enabled) is not bool:
             raise ValueError('enabled must be boolean')
         for field in ('producer', 'profiles', 'evidence_root', 'data_dir'):
@@ -97,10 +105,17 @@ class Settings:
         return (generation if generation else self.data_dir / 'uninitialized') / 'proposals.sqlite3'
 
 
+def prtimes_141131_offline_settings(producer, profiles, evidence_root, data_dir):
+    """Only an explicit in-process, offline 141131 metadata contract; no live CLI."""
+    return Settings(PRTIMES_141131_PRODUCER_ID, Path(producer), Path(profiles),
+                    Path(evidence_root), Path(data_dir), False, PRTIMES_141131_PROFILES_SHA)
+
+
 def authenticate(cfg):
     raw = cfg.producer.read_bytes()
     profiles = cfg.profiles.read_bytes()
-    if digest(raw) != CODE_SHA or digest(profiles) != PROFILES_SHA:
+    expected = cfg.prtimes_141131_profile_sha or PROFILES_SHA
+    if digest(raw) != CODE_SHA or digest(profiles) != expected:
         raise ValueError('Accepted D1 code/profile pin mismatch')
     module = types.ModuleType('_oem_pinned_d1')
     module.__file__ = str(cfg.producer)
@@ -212,6 +227,11 @@ def prepare(cfg, export):
             if digest(data) != e[kind + '_sha256']:
                 raise ValueError('Evidence SHA256 mismatch')
             blobs[str(path)] = data
+        if cfg.prtimes_141131_profile_sha is not None:
+            if unavailable:
+                raise ValueError('PR TIMES 141131 import requires retained original capture and text')
+            from .prtimes_141131 import inspect_capture
+            inspect_capture(blobs[str(paths['capture'])])
         if str(paths['text']) in blobs:
             text = blobs[str(paths['text'])]
             text.decode('utf8')
@@ -367,6 +387,8 @@ def review(cfg, lead_id, label):
 
 
 def refresh(cfg):
+    if cfg.prtimes_141131_profile_sha is not None:
+        raise ValueError('PR TIMES 141131 candidate is offline-only; live refresh prohibited')
     if not cfg.enabled:
         raise ValueError('Discovery is disabled')
     _, profiles = authenticate(cfg)
