@@ -1,0 +1,27 @@
+{
+  "schema_version": "d1.profiles.v1",
+  "profiles": [
+    {
+      "id": "tablets",
+      "destination": "tablet-clank:proposal-review",
+      "relevance": [
+        "(?i)(?:\\btablet\\b|\\biPlay\\b|\\bPad\\s+[A-Z0-9]|タブレット|平板)"
+      ],
+      "event": [
+        "(?i)(?:発表|発売|新登場|販売開始|予約開始|\\b(?:announc(?:e|ed|es)|launch(?:ed|es)?|unveil(?:ed|s)?|debut(?:ed|s)?)\\b)"
+      ],
+      "negative": [
+        "(?i)(?:セール|割引|クーポン|キャンペーン|値下げ|ポイント還元|\\b(?:coupon|discount|sale|deal)\\b)",
+        "(?i)^(?!.*(?:タブレット|平板|\\biPlay\\b|\\btablet\\b|\\bPad\\s+[A-Z0-9])).*(?:スマートフォン|携帯電話|アクセサリー|保護ケース|\\b(?:smartphone|phone|accessory)\\b)"
+      ],
+      "sources": [
+        {
+          "id": "prtimes_141131",
+          "url": "https://prtimes.jp/companyrdf.php?company_id=141131",
+          "publisher": "PR TIMES",
+          "description": "PR TIMES RSS1 company 141131; feed-internal dc:corp asserted Alldocube in the consumed capture; manufacturer/legal identity and future collection rights not independently admitted."
+        }
+      ]
+    }
+  ]
+}

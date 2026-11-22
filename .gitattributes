@@ -1,3 +1,5 @@
 # The externally authenticated profile is a byte-pinned configuration.
 # Preserve its exact release bytes on Windows and Unix checkouts.
 config/d1-tablets.v1.json -text
+# Offline-only source-specific profile is byte pinned independently.
+config/d1-prtimes-141131.offline.v1.json -text
