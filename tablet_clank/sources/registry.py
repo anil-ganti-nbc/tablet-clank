@@ -29,6 +29,12 @@ SOURCES = {
  "honor_cn_tablets_comparison": Source("honor_cn_tablets_comparison", "Honor", "CN", "Honor China tablet comparison", "https://www.honor.com/cn/tablets/comparison/", "PRODUCTION", str(ROOT / "tests/fixtures/honor_cn_tablets_comparison.json")),
  "tcl_global_tablets": Source("tcl_global_tablets", "TCL", "GLOBAL", "TCL global tablet catalogue", "https://www.tcl.com/global/en/tablets", "PRODUCTION", str(ROOT / "tests/fixtures/tcl_global_tablets.html")),
  "honor_uk_tablets": Source("honor_uk_tablets", "Honor", "UK", "Honor UK tablet storefront catalogue", "https://www.honor.com/uk/tablets/", "PRODUCTION", str(ROOT / "tests/fixtures/honor_uk_tablets.html")),
+ # P0 OEM scouts: fixture-tested only, NOT selected for manual --all,
+ # production, campaigns, scheduling, or delivery. Enable individually only
+ # after published-access and live completeness checks.
+ "alldocube_global_tablets": Source("alldocube_global_tablets", "Alldocube", "GLOBAL", "official OEM tablet catalogue", "https://www.alldocube.com/en/product-category/android/", "DISABLED", str(ROOT / "tests/fixtures/alldocube_global_tablets.html")),
+ "teclast_global_tablets": Source("teclast_global_tablets", "Teclast", "GLOBAL", "official OEM tablet catalogue", "https://en.teclast.com/tablet/", "DISABLED", str(ROOT / "tests/fixtures/teclast_global_tablets.html")),
+ "blackview_zeno_tablets": Source("blackview_zeno_tablets", "Blackview", "GLOBAL", "official OEM tablet catalogue", "https://www.blackview.hk/products/81", "DISABLED", str(ROOT / "tests/fixtures/blackview_zeno_tablets.html")),
 }
 PRODUCTION_ALLOWLIST: tuple[str, ...] = (
     # Operator decision 2026-09-15: Tablet is intentionally dormant/manual,
